@@ -52,6 +52,8 @@ views:
         entities:
           - entity: sensor.saj_h2_safe_monitor_operating_mode
             name: Operating mode
+          - entity: sensor.saj_h2_safe_monitor_battery_activity
+            name: Battery activity
           - entity: sensor.saj_h2_safe_monitor_battery_power
             name: Battery power (signed)
           - entity: sensor.saj_h2_safe_monitor_battery_state_of_charge
