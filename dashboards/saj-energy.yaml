@@ -15,7 +15,6 @@ views:
           - type: horizontal-stack
             cards:
               - type: markdown
-                title: Live energy flow
                 content: |
                   {% macro p(entity, absolute=false) -%}
                     {%- set raw = states(entity) -%}
@@ -43,6 +42,10 @@ views:
                   {% set outlook = 'sensor.saj_h2_safe_monitor_today_s_solar_outlook_actual_remaining' %}
                   {% set remaining = 'sensor.saj_h2_safe_monitor_solar_forecast_remaining_today' %}
                   {% set tomorrow = 'sensor.saj_h2_safe_monitor_tomorrow_s_solar_forecast' %}
+                  {% set battery_percent = states(soc) | float(0) %}
+                  {% set filled = [(battery_percent / 10) | round(0, 'floor') | int, 10] | min %}
+                  ## Live energy flow · {{ states(soc) }}% · {{ e('sensor.saj_h2_safe_monitor_estimated_battery_energy') }} · {{ '▰' * filled }}{{ '▱' * (10 - filled) }}
+
                   | ☀️ Solar | 🏠 House | 🔋 Battery | ⚡ Grid | 🔮 Forecast |
                   |:---:|:---:|:---:|:---:|:---:|
                   | **{{ p(solar) }}** | **{{ p(home) }}** | **{{ p(battery, true) }}** | **{{ p(imp) }}** | **{{ e(outlook) }} Today** |
