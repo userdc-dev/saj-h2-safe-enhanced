@@ -5,6 +5,7 @@ from homeassistant.components.sensor import (
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN, SENSORS, ENERGY_KEYS
+from .solar_forecast import ENERGY_SENSORS, STATUS_SENSORS
 
 _CLASSES = {
     "W": SensorDeviceClass.POWER,
@@ -68,6 +69,52 @@ class SajSafeSensor(CoordinatorEntity, SensorEntity):
             return None
         return self.coordinator.data.get(self.key)
 
+class SajForecastSensor(CoordinatorEntity, SensorEntity):
+    """Forecast estimate; stored-energy statistics must not include predictions."""
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+
+    def __init__(self, forecast, key):
+        super().__init__(forecast)
+        self.key = key
+        self._attr_unique_id = f"{forecast.entry.entry_id}_{key}"
+        if key in ENERGY_SENSORS:
+            self._attr_name, self._attr_native_unit_of_measurement = ENERGY_SENSORS[key]
+            self._attr_device_class = SensorDeviceClass.ENERGY
+            # No TOTAL or MEASUREMENT: future forecast is not metered energy.
+        else:
+            self._attr_name = STATUS_SENSORS[key]
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, forecast.entry.entry_id)},
+            "name": "SAJ H2 Safe Monitor",
+            "manufacturer": "SAJ",
+            "model": "H2 (register profile under verification)",
+        }
+
+    @property
+    def native_value(self):
+        return (self.coordinator.data or {}).get(self.key)
+
+    @property
+    def extra_state_attributes(self):
+        if self.key != "forecast_today":
+            return None
+        data = self.coordinator.data or {}
+        return {
+            "daily": data.get("daily", []),
+            "hourly": data.get("hourly", []),
+            "learned_factors": data.get("hourly_factors", {}),
+            "model": data.get("forecast_model", ""),
+            "limitation": data.get("note", ""),
+        }
+
 async def async_setup_entry(hass, entry, async_add_entities):
     keys = [*SENSORS, "operating_mode", *ENERGY_KEYS]
-    async_add_entities([SajSafeSensor(entry.runtime_data, key) for key in keys])
+    entities = [SajSafeSensor(entry.runtime_data, key) for key in keys]
+    forecast = getattr(entry.runtime_data, "forecast", None)
+    if forecast is not None:
+        entities += [
+            SajForecastSensor(forecast, key)
+            for key in (*ENERGY_SENSORS, *STATUS_SENSORS)
+        ]
+    async_add_entities(entities)
