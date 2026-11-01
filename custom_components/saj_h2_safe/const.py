@@ -3,7 +3,7 @@ DEFAULT_PORT = 502
 DEFAULT_SCAN_INTERVAL = 60
 # Register addresses informed by stanus74/home-assistant-saj-h2-modbus.
 # Read-only Modbus function 03. Ranges filter implausible measurements.
-# On this particular inverter PV3 was verified against raw register values.
+# This SAJ H2's PV3, home load, and grid measurements were compared with app data.
 SENSORS = {
     "battery_voltage": (0x4069, "Battery voltage", "V", 0.1, False, 0, 1000),
     "battery_current": (0x406A, "Battery current", "A", 0.01, True, -500, 500),
@@ -17,6 +17,8 @@ SENSORS = {
     "pv3_voltage": (0x4077, "PV3 voltage", "V", 0.1, False, 0, 1000),
     "pv3_power": (0x4079, "PV3 power", "W", 1, False, 0, 30000),
     "total_pv_power": (None, "Total solar power", "W", 1, False, 0, 90000),
+    "home_load_power": (0x40A0, "Home consumption", "W", 1, True, 0, 30000),
+    "grid_power": (0x40AD, "Grid power (raw signed)", "W", 1, True, -30000, 30000),
 }
 
 def decode(raw, signed, scale, low, high):
