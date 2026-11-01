@@ -40,17 +40,21 @@ views:
                   {% set b = states(battery) | float(0) %}
                   {% set gi = states(imp) | float(0) %}
                   {% set ge = states(exp) | float(0) %}
-                  | ☀️ Solar | 🏠 House | 🔋 Battery | ⚡ Grid |
-                  |:---:|:---:|:---:|:---:|
-                  | **{{ p(solar) }}** | **{{ p(home) }}** | **{{ p(battery, true) }}** | **{{ p(imp) }}** |
-                  | Generating | Using | {{ 'Discharging ↗' if b > 15 else 'Charging ↙' if b < -15 else 'Idle' }} | Import |
-                  | | | {{ states(soc) }}% SOC | **{{ p(exp) }}** export |
+                  {% set outlook = 'sensor.saj_h2_safe_monitor_today_s_solar_outlook_actual_remaining' %}
+                  {% set remaining = 'sensor.saj_h2_safe_monitor_solar_forecast_remaining_today' %}
+                  {% set tomorrow = 'sensor.saj_h2_safe_monitor_tomorrow_s_solar_forecast' %}
+                  | ☀️ Solar | 🏠 House | 🔋 Battery | ⚡ Grid | 🔮 Forecast |
+                  |:---:|:---:|:---:|:---:|:---:|
+                  | **{{ p(solar) }}** | **{{ p(home) }}** | **{{ p(battery, true) }}** | **{{ p(imp) }}** | **{{ e(outlook) }}** |
+                  | Generating | Using | {{ 'Discharging ↗' if b > 15 else 'Charging ↙' if b < -15 else 'Idle' }} | Import | Today total |
+                  | | | {{ states(soc) }}% SOC | **{{ p(exp) }}** export | **{{ e(remaining) }}** remaining |
+                  | | | | | **{{ e(tomorrow) }}** tomorrow |
 
                   **{{ 'Grid → House' if gi > 0 else 'House → Grid' if ge > 0 else 'Grid idle' }}** · **{{ states('sensor.saj_h2_safe_monitor_operating_mode') }}**
 
                   🔋 Stored {{ e('sensor.saj_h2_safe_monitor_estimated_battery_energy') }} *(estimate)*
 
-                  *Grid direction provisional; integration is read-only.*
+                  *Forecast is an estimate (today total = measured + predicted remaining). Grid direction provisional; read-only.*
               - type: history-graph
                 title: Power · 24 hours
                 hours_to_show: 24
