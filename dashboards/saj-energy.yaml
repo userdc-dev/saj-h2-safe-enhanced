@@ -69,52 +69,7 @@ views:
                   - entity: sensor.saj_h2_safe_monitor_grid_power_raw_signed
                     name: Grid Power
 
-          # Smaller detail cards; no repeated battery or flow summaries.
-          - type: horizontal-stack
-            cards:
-              - type: gauge
-                entity: sensor.saj_h2_safe_monitor_battery_state_of_charge
-                name: Battery SOC
-                min: 0
-                max: 100
-                severity:
-                  red: 0
-                  yellow: 20
-                  green: 45
-              - type: markdown
-                title: Battery
-                content: |
-                  {% set activity = states('sensor.saj_h2_safe_monitor_battery_activity') %}
-                  {% set watts = states('sensor.saj_h2_safe_monitor_battery_power') %}
-                  {% set stored = states('sensor.saj_h2_safe_monitor_estimated_battery_energy') %}
-                  **{{ activity }}**
-                  
-                  {% if is_number(watts) %}
-                  **{{ '%.2f kW' | format(watts | float | abs / 1000) if watts | float | abs >= 1000 else '%.0f W' | format(watts | float | abs) }}**
-                  {% else %}
-                  **—**
-                  {% endif %}
 
-                  Stored: {{ '%.2f kWh' | format(stored | float) if is_number(stored) and stored | float >= 1 else '%.0f Wh' | format(stored | float * 1000) if is_number(stored) else '—' }}
-              - type: markdown
-                title: PV inputs
-                content: |
-                  {% macro fmt(entity) -%}
-                  {%- set v = states(entity) -%}
-                  {{- ('%.2f kW' | format(v | float / 1000)) if is_number(v) and v | float >= 1000 else ('%.0f W' | format(v | float)) if is_number(v) else '—' -}}
-                  {%- endmacro %}
-                  ☀️ **PV1** · {{ fmt('sensor.saj_h2_safe_monitor_pv1_power') }}
-
-                  ☀️ **PV2** · {{ fmt('sensor.saj_h2_safe_monitor_pv2_power') }}
-
-                  ☀️ **PV3** · {{ fmt('sensor.saj_h2_safe_monitor_pv3_power') }}
-              - type: history-graph
-                title: Battery SOC · 24 hours
-                hours_to_show: 24
-                refresh_interval: 30
-                entities:
-                  - entity: sensor.saj_h2_safe_monitor_battery_state_of_charge
-                    name: Battery SOC
   - title: Energy
     path: energy
     icon: mdi:chart-bar
