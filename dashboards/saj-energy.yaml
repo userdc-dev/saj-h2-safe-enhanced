@@ -47,11 +47,9 @@ views:
                   |:---:|:---:|:---:|:---:|:---:|
                   | **{{ p(solar) }}** | **{{ p(home) }}** | **{{ p(battery, true) }}** | **{{ p(imp) }}** | **{{ e(outlook) }} Today** |
                   | Generating | Using | {{ 'Discharging ↗' if b > 15 else 'Charging ↙' if b < -15 else 'Idle' }} | Import | **{{ e(remaining) }}** remaining |
-                  | | | {{ states(soc) }}% SOC | **{{ p(exp) }}** export | **{{ e(tomorrow) }}** tomorrow |
+                  | | | **{{ e('sensor.saj_h2_safe_monitor_estimated_battery_energy') }}** stored | **{{ p(exp) }}** export | **{{ e(tomorrow) }}** tomorrow |
 
                   **{{ 'Grid → House' if gi > 0 else 'House → Grid' if ge > 0 else 'No net grid exchange' }}** · **{{ states('sensor.saj_h2_safe_monitor_operating_mode') }}**
-
-                  🔋 Estimated stored {{ e('sensor.saj_h2_safe_monitor_estimated_battery_energy') }} *(SOC × 40.00 kWh)*
 
                   *Forecast is an estimate (today total = measured + predicted remaining). Grid direction provisional; read-only.*
               - type: history-graph
