@@ -4,6 +4,38 @@ Custom local Modbus integration for Home Assistant, developed using the public r
 [stanus74/home-assistant-saj-h2-modbus](https://github.com/stanus74/home-assistant-saj-h2-modbus) and
 actual H2 data from the device owner's SAJ app.
 
+
+## Experimental solar forecast (v0.3.0)
+
+The new Solar Forecast tab uses Home Assistant's configured home coordinates and
+[Open-Meteo](https://open-meteo.com/) tilted irradiance. It projects generation from
+the same three panel groups as SolarCast: 9 at 29°, 15 at 27°, and 6 at 299°, 440 W per panel,
+25° tilt. **Confirm these group details match the actual installation before relying on estimates.**
+
+The forecast represents **total PV-side energy**. The SAJ H2's **10 kW AC output
+rating is NOT a cap on simultaneous PV input when DC battery charging can consume
+additional generation**. The battery charge-side example of 10 kW is separate and
+does not imply the inverter can always route 20 kW simultaneously: MPPT limits,
+firmware, temperature, state of charge, and operating constraints matter.
+The model does not forecast AC delivery or battery charge power separately.
+
+Hourly irradiance is fetched once per hour. Inverter power measurements every ~10 seconds
+inform a conservative, persisted hour-of-day correction after sufficiently complete,
+clear-sky measured hours. The correction is intentionally bounded (0.65–1.15).
+Weather forecast error, partial shadow, export limitation and curtailment cannot be
+separated reliably from a single low PV reading; high SOC and cloudy intervals are
+excluded from self-correction. Do not interpret learning factors as definitive
+diagnoses of trees/roof obstructions or export curtailment. The first few days are
+provisional and the model does not promise perfect forecast accuracy.
+
+**Privacy:** Enabling forecast retrieval sends the Home Assistant site's latitude
+and longitude to Open-Meteo. No solar or battery Modbus register writes are introduced.
+A failed weather request must not prevent local SAJ sensor monitoring.
+
+**Dashboard:** replace the YAML with
+[`dashboards/saj-energy.yaml`](dashboards/saj-energy.yaml) after updating the
+custom integration and restarting Home Assistant to add the Solar Forecast tab.
+
 ## Current features
 
 - **Live:** total solar (PV1 + PV2 + PV3), home consumption, battery SOC, battery power, battery activity, and grid power.
