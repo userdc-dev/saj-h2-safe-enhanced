@@ -56,7 +56,7 @@ custom integration and restarting Home Assistant to add the Solar Forecast tab.
 - The register `0x40BF` gave 16.59 kWh solar today, close to the official app's earlier 16.38 kWh.
 - `0x40DF` gave 24.12 kWh house consumption (needs app verification).
 - App operating mode `0` is labelled Self-consumption based on the upstream control mapping and observation; other mappings need on-device validation.
-- **Estimated battery energy** is SOC × **40.96 kWh nominal**, based on this owner's installed SAJ B2 40.96 kWh battery. It is NOT a BMS-measured usable-capacity value. To change the nominal capacity, set `battery_capacity_kwh` in integration entry data/options; UI editing is a future feature.
+- **Estimated battery energy** is SOC × **40.00 kWh**, based on the installed battery capacity reported by the owner's SAJ app. It is NOT a BMS-measured usable-capacity value or a guarantee of energy available above reserve. To change the nominal capacity, set `battery_capacity_kwh` in integration entry data/options; UI editing is a future feature.
 - **Grid import/export polarity and sell/feed-in counters are not confirmed.** Do not use those derived entities for billing, automation, or Energy Dashboard billing calculations until verified.
 - Existing third-party inverter integrations or SAJ cloud controls are not disabled by this read-only integration.
 
