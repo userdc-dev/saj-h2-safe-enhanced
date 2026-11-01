@@ -8,6 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from pymodbus.client import AsyncModbusTcpClient
+from .solar_forecast import SajSolarForecastCoordinator
 from .const import (
     DEFAULT_SCAN_INTERVAL, DEFAULT_BATTERY_CAPACITY_KWH, SENSORS,
     ENERGY_KEYS, MODE_LABELS, decode, decode_energy, derived_values,
@@ -122,6 +123,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = SajSafeCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
+    # Forecast availability never blocks the working local Modbus integration.
+    forecast = SajSolarForecastCoordinator(hass, entry, coordinator)
+    coordinator.forecast = forecast
+    await forecast.async_load_history()
+    try:
+        await forecast.async_refresh()
+    except Exception as exc:
+        _LOGGER.warning("Solar forecast initial refresh failed (live readings still work): %s", exc)
+    entry.async_on_unload(coordinator.async_add_listener(forecast.on_live_update))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
