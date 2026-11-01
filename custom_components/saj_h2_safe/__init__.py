@@ -7,7 +7,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from pymodbus.client import AsyncModbusTcpClient
-from .const import DEFAULT_SCAN_INTERVAL, SENSORS, decode
+from .const import DEFAULT_SCAN_INTERVAL, SENSORS, aggregate_solar_power, decode
 
 _LOGGER = logging.getLogger(__name__)
 PLATFORMS = ["sensor"]
@@ -36,15 +36,17 @@ class SajSafeCoordinator(DataUpdateCoordinator):
                 sig = inspect.signature(read).parameters
                 unit_kw = {"device_id": 1} if "device_id" in sig else {"slave": 1}
                 result = {}
-                # Read measurement registers only, never settings/control registers.
-                for address, count in ((0x4069, 7), (0x4071, 6)):
+                # Only measurement registers. PV1, PV2, PV3 are read together.
+                for address, count in ((0x4069, 7), (0x4071, 9)):
                     response = await read(address=address, count=count, **unit_kw)
                     if response is None or response.isError() or len(response.registers) != count:
                         raise UpdateFailed(f"Invalid Modbus response for {address:#06x}")
                     result.update({address + idx: value for idx, value in enumerate(response.registers)})
                 parsed = {}
                 for key, (address, _, _, factor, signed, low, high) in SENSORS.items():
-                    parsed[key] = decode(result[address], signed, factor, low, high)
+                    if address is not None:
+                        parsed[key] = decode(result[address], signed, factor, low, high)
+                parsed["total_pv_power"] = aggregate_solar_power(parsed)
                 if parsed["battery_soc"] is None:
                     raise UpdateFailed("Battery SOC invalid or unsupported; no values published")
                 self.failures = 0
