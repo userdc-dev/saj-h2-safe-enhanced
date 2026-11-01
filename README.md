@@ -1,43 +1,63 @@
-# SAJ H2 Safe Enhanced — v0.1.1 (experimental)
+# SAJ H2 Safe Enhanced v0.2.0 — Experimental, read-only
 
-An independently written, **read-only** Home Assistant SAJ H2 integration informed by the published register mappings in [stanus74/home-assistant-saj-h2-modbus](https://github.com/stanus74/home-assistant-saj-h2-modbus).
+Custom local Modbus integration for Home Assistant, developed using the public register mappings in
+[stanus74/home-assistant-saj-h2-modbus](https://github.com/stanus74/home-assistant-saj-h2-modbus) and
+actual H2 data from the device owner's SAJ app.
 
-## Safety
+## Current features
 
-- **No Modbus write methods, buttons, switches, numbers, or controls.**
-- Reads only two short measurement blocks using Modbus function 03.
-- Battery SOC at 0x406F is decoded using a **0.01** multiplier; raw 4300 matched the owner's SAJ application reading of 43%.
-- Implausible measurements and unavailable register sentinel values become `unknown`; failed polling makes entities unavailable rather than fabricating zeros.
-- A single polling lock and 5-second network timeout; default polling is every 60 seconds.
-- Solar voltage, solar power, current, temperature, and other readings **still need independent validation** against the SAJ app on this particular inverter.
-- This integration does not disable writes performed by any *other* installed integration or third-party software.
-- **Not approved by SAJ; not tested on physical hardware by the developer.** Do not rely on it for protective or safety-critical automation.
+- **Live:** total solar (PV1 + PV2 + PV3), home consumption, battery SOC, battery power, battery activity, and grid power.
+- **Battery:** operating mode (register 0x3647, with unknown codes labelled), nominal-capacity-derived stored energy, voltage, current, temperature.
+- **Grid:** raw signed power; separate positive/negative sensors labelled **direction unverified** until a non-zero grid-flow comparison.
+- **Energy:** solar, home, battery charge/discharge, plus two SAJ-named grid counter types; today, month, year and lifetime in kWh.
+- **Week:** built-in Home Assistant statistics-graph uses weekly changes to the lifetime counters. Optional weekly utility-meter examples are in `examples/`.
+- **Dashboard:** `dashboards/saj-energy.yaml`, using only built-in HA cards (no HACS UI dependency).
 
-## Install or update from your Kamrui server over SSH
+## Safety and accuracy
 
-Run from a shell on the Home Assistant Docker host:
+- No write functions, numbers, switches, buttons, or inverter-modifying services.
+- Modbus function 03 reads only. Socket timeout 5 seconds, retry count zero, default polling 60 seconds.
+- Bad data is rejected; auxiliary blocks may show unavailable without disabling the core live sensors.
+- Battery raw SOC 4300 was confirmed as 43.00%. Three PV inputs were confirmed by comparing 962 W to 978 W in the app.
+- The register `0x40BF` gave 16.59 kWh solar today, close to the official app's earlier 16.38 kWh.
+- `0x40DF` gave 24.12 kWh house consumption (needs app verification).
+- App operating mode `0` is labelled Self-consumption based on the upstream control mapping and observation; other mappings need on-device validation.
+- **Estimated battery energy** is SOC × **40.96 kWh nominal**, based on this owner's installed SAJ B2 40.96 kWh battery. It is NOT a BMS-measured usable-capacity value. To change the nominal capacity, set `battery_capacity_kwh` in integration entry data/options; UI editing is a future feature.
+- **Grid import/export polarity and sell/feed-in counters are not confirmed.** Do not use those derived entities for billing, automation, or Energy Dashboard billing calculations until verified.
+- Existing third-party inverter integrations or SAJ cloud controls are not disabled by this read-only integration.
+
+## Install / update from Kamrui server SSH
 
 ```bash
 cd /home/kamrui/compose-files/homeassistant/config
-mkdir -p custom_components/saj_h2_safe
 curl -fL https://github.com/userdc-dev/saj-h2-safe-enhanced/archive/refs/heads/main.tar.gz -o /tmp/saj-h2-safe-enhanced.tar.gz
 tar -xzf /tmp/saj-h2-safe-enhanced.tar.gz -C /tmp
 cp -a /tmp/saj-h2-safe-enhanced-main/custom_components/saj_h2_safe/. custom_components/saj_h2_safe/
 docker restart homeassistant
 ```
 
-**First-time setup:** Home Assistant → Settings → Devices & services → Add Integration → SAJ H2 Safe Monitor. The current build uses a manually provided local Modbus IP and port 502. Automatic IP discovery and DHCP-change recovery have **not** been implemented yet. Prefer a router DHCP reservation in the meantime.
+**Do not place backups in `custom_components`**: Home Assistant tries to load every subfolder as an integration.
 
-**Existing installation:** These commands update the integration's code in place; the configured integration and entity IDs should remain intact.
+The initial configuration is SAJ device IP, port 502, poll interval 60 seconds. Automatic discovery and DHCP failover are not implemented; reserve its IP in your router.
 
-After restart, verify battery SOC and all other sensors against the official SAJ app. Your verified SAJ Modbus endpoint at the time of investigation was 172.16.1.4:502; this may change if DHCP reassigns its address.
+## Dashboard setup
 
-## Source acknowledgement
+Settings → Dashboards → Add Dashboard → New dashboard, then open its raw YAML editor and paste
+[`dashboards/saj-energy.yaml`](dashboards/saj-energy.yaml). Some entity IDs may need adjustment
+if you already renamed devices or entities. The dashboard is a starter interface, not a custom frontend card.
 
-Register locations and naming were informed by the upstream MIT-licensed project [stanus74/home-assistant-saj-h2-modbus](https://github.com/stanus74/home-assistant-saj-h2-modbus). This repository does not copy upstream write controls.
+The "Energy" tab includes today/month/year totals and weekly/monthly history bar charts.
+**Weekly graphs appear only after Home Assistant has recorded sufficient historical statistics**.
+For a weekly number that resets each week, merge [weekly utility-meter helpers](examples/weekly-utility-meters.yaml)
+into your Home Assistant configuration, then restart; those weekly counters start when created
+and do not retroactively reconstruct history.
 
-## Tests
+## Testing
 
 ```bash
 python3 tests/test_decode.py
+python3 -m compileall -q custom_components/saj_h2_safe
 ```
+
+Tests check static decoder correctness, not complete compatibility or behaviour with every H2/firmware.
+This is not manufacturer-supported and should not power safety-critical automations.
