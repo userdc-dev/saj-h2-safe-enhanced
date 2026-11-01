@@ -2,8 +2,9 @@
 DOMAIN = "saj_h2_safe"
 DEFAULT_PORT = 502
 DEFAULT_SCAN_INTERVAL = 60
-# Owner's nominal installed B2 battery capacity; approximate, configurable later.
-DEFAULT_BATTERY_CAPACITY_KWH = 40.96
+# SAJ app reports 40.00 kWh installed nominal capacity (two battery stacks).
+# Energy estimate = displayed SOC * 40.00 / 100; not BMS usable energy.
+DEFAULT_BATTERY_CAPACITY_KWH = 40.00
 
 # key: (register address, friendly name, unit, multiplier, signed, min, max)
 # Verified against the SAJ app: battery SOC, PV1-3, load, signed grid watts at zero.
