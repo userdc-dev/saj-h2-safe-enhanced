@@ -36,7 +36,7 @@ def validate_groups(groups):
             raise ValueError("Invalid azimuth or tilt")
 
 def hour_records(weather_series, groups=PANEL_GROUPS, efficiency=SYSTEM_EFFICIENCY,
-                 ac_limit_kw=INVERTER_AC_KW, hourly_factors=None):
+                 ac_limit_kw=INVERTER_AC_KW, hourly_factors=None, timezone_name='Australia/Adelaide'):
     """Return UTC interval end -> hourly forecast with power in kW and energy kWh.
 
     All groups MUST have matching UTC timestamps; incomplete hours are omitted,
@@ -71,7 +71,7 @@ def hour_records(weather_series, groups=PANEL_GROUPS, efficiency=SYSTEM_EFFICIEN
         if not valid:
             continue
         kw = min(ac_limit_kw, max(0, kw * efficiency))
-        local_slot = datetime.fromtimestamp(end_epoch - 1, timezone.utc).hour
+        local_slot = datetime.fromtimestamp(end_epoch - 1, timezone.utc).astimezone(ZoneInfo(timezone_name)).hour
         factor = (hourly_factors or {}).get(str(local_slot), 1.0)
         if not 0.65 <= float(factor) <= 1.15:
             factor = 1.0
