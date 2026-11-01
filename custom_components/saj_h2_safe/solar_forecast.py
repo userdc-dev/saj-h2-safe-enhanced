@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from aiohttp import ClientTimeout
 from datetime import datetime, timezone, timedelta
 from time import monotonic
 from zoneinfo import ZoneInfo
@@ -15,7 +16,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .solar_model import (
-    PANEL_GROUPS, SYSTEM_EFFICIENCY, INVERTER_AC_KW,
+    PANEL_GROUPS, SYSTEM_EFFICIENCY, INVERTER_AC_KW, BATTERY_DC_CHARGE_KW,
     api_azimuth, hour_records, day_summaries, learn_factor,
 )
 
@@ -77,7 +78,7 @@ class SajSolarForecastCoordinator(DataUpdateCoordinator):
             "timeformat": "unixtime",
             "forecast_days": 7,
         }
-        async with session.get(URL, params=params, timeout=20) as response:
+        async with session.get(URL, params=params, timeout=ClientTimeout(total=20)) as response:
             response.raise_for_status()
             data = await response.json()
         hourly = data.get("hourly") or {}
@@ -96,7 +97,7 @@ class SajSolarForecastCoordinator(DataUpdateCoordinator):
             )
             new_hours = hour_records(
                 series, hourly_factors=self.factors, timezone_name=self.tz,
-                efficiency=SYSTEM_EFFICIENCY, ac_limit_kw=INVERTER_AC_KW,
+                efficiency=SYSTEM_EFFICIENCY,
             )
             if len(new_hours) < 24:
                 raise ValueError("Weather forecast has fewer than 24 valid hourly intervals")
@@ -154,8 +155,8 @@ class SajSolarForecastCoordinator(DataUpdateCoordinator):
             "hourly": hourly_list,
             "hourly_factors": dict(self.factors),
             "latitude_source": "Home Assistant home coordinates",
-            "forecast_model": "Open-Meteo tilted irradiance + measured clear-sky corrections",
-            "note": "Low output alone cannot distinguish shade, cloud forecast error, and curtailment.",
+            "forecast_model": "PV-side forecast (not capped at 10 kW AC) + clear-sky corrections",
+            "note": "10 kW AC limit does not cap PV-side output during DC battery charging. Low output alone cannot distinguish shading, weather error or curtailment.",
         }
 
     def on_live_update(self):
