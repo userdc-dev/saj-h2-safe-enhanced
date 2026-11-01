@@ -9,57 +9,91 @@ views:
     icon: mdi:home-lightning-bolt
     cards:
       - type: markdown
+        title: Live energy flow
         content: |
-          ## SAJ H2 · Live Energy
-          Read-only local monitoring. Data refreshes at your configured polling interval.
-          **Grid import/export direction is provisional** until verified against
-          a non-zero flow in the SAJ app.
+          {% macro p(entity, absolute=false) -%}
+            {%- set raw = states(entity) -%}
+            {%- if is_number(raw) -%}
+              {%- set v = raw | float | abs if absolute else raw | float -%}
+              {{- ('%.2f kW' | format(v / 1000)) if (v | abs >= 1000) else ('%.0f W' | format(v)) -}}
+            {%- else -%}—{%- endif -%}
+          {%- endmacro %}
+          {% macro e(entity) -%}
+            {%- set raw = states(entity) -%}
+            {%- if is_number(raw) -%}
+              {%- set v = raw | float -%}
+              {{- ('%.2f kWh' | format(v)) if (v | abs >= 1) else ('%.0f Wh' | format(v * 1000)) -}}
+            {%- else -%}—{%- endif -%}
+          {%- endmacro %}
+          {% set solar = 'sensor.saj_h2_safe_monitor_total_solar_power' %}
+          {% set home = 'sensor.saj_h2_safe_monitor_home_consumption' %}
+          {% set battery = 'sensor.saj_h2_safe_monitor_battery_power' %}
+          {% set soc = 'sensor.saj_h2_safe_monitor_battery_state_of_charge' %}
+          {% set import = 'sensor.saj_h2_safe_monitor_grid_import_direction_unverified' %}
+          {% set export = 'sensor.saj_h2_safe_monitor_grid_export_direction_unverified' %}
+          {% set b = states(battery) | float(0) %}
+          {% set gi = states(import) | float(0) %}
+          {% set ge = states(export) | float(0) %}
+          ## ⚡ SAJ Energy Flow
+
+          | ☀️ SOLAR | 🏠 HOUSE | 🔋 BATTERY |
+          |:---:|:---:|:---:|
+          | **{{ p(solar) }}** | **{{ p(home) }}** | **{{ states(soc) }}%** |
+          | Solar ➜ House | Live demand | {{ 'Battery ➜ House' if b > 15 else 'House ➜ Battery' if b < -15 else 'Idle' }} |
+          | | | **{{ p(battery, true) }}** |
+
+          {% if gi > 0 %}
+          **🏭 GRID ➜ 🏠 HOUSE** — Import **{{ p(import) }}** *(direction provisional)*
+          {% elif ge > 0 %}
+          **🏠 HOUSE ➜ 🏭 GRID** — Export **{{ p(export) }}** *(direction provisional)*
+          {% else %}
+          **🏭 GRID:** {{ p(import) }} import / {{ p(export) }} export
+          {% endif %}
+
+          **Battery stored:** {{ e('sensor.saj_h2_safe_monitor_estimated_battery_energy') }} *(estimated from nominal capacity)*
+
+          **Operating mode:** {{ states('sensor.saj_h2_safe_monitor_operating_mode') }}
+
+          <small>Numbers refresh from live inverter readings. Grid direction is not yet verified against a nonzero SAJ app reading. All controls remain read-only.</small>
       - type: grid
         columns: 2
         square: false
         cards:
           - type: gauge
             entity: sensor.saj_h2_safe_monitor_battery_state_of_charge
-            name: Battery
+            name: Battery charge
             min: 0
             max: 100
             severity:
               red: 0
               yellow: 20
               green: 45
-          - type: entity
-            entity: sensor.saj_h2_safe_monitor_estimated_battery_energy
-            name: Stored battery energy (estimated)
-            icon: mdi:battery
-          - type: entity
-            entity: sensor.saj_h2_safe_monitor_total_solar_power
-            name: Solar
-            icon: mdi:solar-power
-          - type: entity
-            entity: sensor.saj_h2_safe_monitor_home_consumption
-            name: Home
-            icon: mdi:home-lightning-bolt
-          - type: entity
-            entity: sensor.saj_h2_safe_monitor_grid_import_direction_unverified
-            name: Grid import (provisional)
-            icon: mdi:transmission-tower-import
-          - type: entity
-            entity: sensor.saj_h2_safe_monitor_grid_export_direction_unverified
-            name: Grid export (provisional)
-            icon: mdi:transmission-tower-export
-      - type: entities
-        title: Battery
-        entities:
-          - entity: sensor.saj_h2_safe_monitor_operating_mode
-            name: Operating mode
-          - entity: sensor.saj_h2_safe_monitor_battery_activity
-            name: Battery activity
-          - entity: sensor.saj_h2_safe_monitor_battery_power
-            name: Battery power (signed)
-          - entity: sensor.saj_h2_safe_monitor_battery_state_of_charge
-            name: State of charge
-          - entity: sensor.saj_h2_safe_monitor_estimated_battery_energy
-            name: Stored energy (estimate)
+          - type: markdown
+            title: Battery status
+            content: |
+              {% set mode = states('sensor.saj_h2_safe_monitor_operating_mode') %}
+              {% set activity = states('sensor.saj_h2_safe_monitor_battery_activity') %}
+              {% set watts = states('sensor.saj_h2_safe_monitor_battery_power') %}
+              {% set stored = states('sensor.saj_h2_safe_monitor_estimated_battery_energy') %}
+              **{{ activity }}**
+
+              {% if is_number(watts) %}
+              {{ '%.2f kW' | format(watts | float | abs / 1000) if watts | float | abs >= 1000 else '%.0f W' | format(watts | float | abs) }}
+              {% else %}
+              —
+              {% endif %}
+
+              **Stored:** {{ '%.2f kWh' | format(stored | float) if is_number(stored) and stored | float >= 1 else '%.0f Wh' | format(stored | float * 1000) if is_number(stored) else '—' }}
+
+              **Mode:** {{ mode }}
+      - type: markdown
+        title: PV inputs
+        content: |
+          {% macro fmt(entity) -%}
+          {%- set v = states(entity) -%}
+          {{- ('%.2f kW' | format(v | float / 1000)) if is_number(v) and v | float >= 1000 else ('%.0f W' | format(v | float)) if is_number(v) else '—' -}}
+          {%- endmacro %}
+          **PV1:** {{ fmt('sensor.saj_h2_safe_monitor_pv1_power') }} · **PV2:** {{ fmt('sensor.saj_h2_safe_monitor_pv2_power') }} · **PV3:** {{ fmt('sensor.saj_h2_safe_monitor_pv3_power') }}
       - type: history-graph
         title: Power · Last 24 hours
         hours_to_show: 24
@@ -73,24 +107,27 @@ views:
         hours_to_show: 24
         entities:
           - entity: sensor.saj_h2_safe_monitor_battery_state_of_charge
-      - type: entities
-        title: Solar panel inputs
-        entities:
-          - sensor.saj_h2_safe_monitor_pv1_power
-          - sensor.saj_h2_safe_monitor_pv2_power
-          - sensor.saj_h2_safe_monitor_pv3_power
-
   - title: Energy
     path: energy
     icon: mdi:chart-bar
     cards:
       - type: markdown
+        title: Energy overview
         content: |
-          ## Energy totals
-          kWh counters come from the inverter, not estimates from instant watts.
-          Weekly bar charts use Home Assistant's long-term statistics.
-          Grid energy names remain the SAJ register names until import/export
-          direction and counter semantics are verified.
+          {% macro e(entity) -%}
+          {%- set v = states(entity) -%}
+          {{- ('%.2f kWh' | format(v | float)) if is_number(v) and v | float >= 1 else ('%.0f Wh' | format(v | float * 1000)) if is_number(v) else '—' -}}
+          {%- endmacro %}
+          ## 📊 Production & Consumption
+
+          | | Today | This month | This year |
+          |:---|---:|---:|---:|
+          | ☀️ Solar | {{ e('sensor.saj_h2_safe_monitor_solar_today') }} | {{ e('sensor.saj_h2_safe_monitor_solar_month') }} | {{ e('sensor.saj_h2_safe_monitor_solar_year') }} |
+          | 🏠 Home | {{ e('sensor.saj_h2_safe_monitor_home_consumed_today') }} | {{ e('sensor.saj_h2_safe_monitor_home_consumed_month') }} | {{ e('sensor.saj_h2_safe_monitor_home_consumed_year') }} |
+          | 🔋 Charged | {{ e('sensor.saj_h2_safe_monitor_battery_charged_today') }} | {{ e('sensor.saj_h2_safe_monitor_battery_charged_month') }} | {{ e('sensor.saj_h2_safe_monitor_battery_charged_year') }} |
+          | 🔋 Discharged | {{ e('sensor.saj_h2_safe_monitor_battery_discharged_today') }} | {{ e('sensor.saj_h2_safe_monitor_battery_discharged_month') }} | {{ e('sensor.saj_h2_safe_monitor_battery_discharged_year') }} |
+
+          Weekly figures and historical charts are generated from Home Assistant's accumulated statistics. Grid counter mapping is still being verified.
       - type: entities
         title: Today
         entities:
