@@ -45,10 +45,9 @@ views:
                   {% set tomorrow = 'sensor.saj_h2_safe_monitor_tomorrow_s_solar_forecast' %}
                   | ☀️ Solar | 🏠 House | 🔋 Battery | ⚡ Grid | 🔮 Forecast |
                   |:---:|:---:|:---:|:---:|:---:|
-                  | **{{ p(solar) }}** | **{{ p(home) }}** | **{{ p(battery, true) }}** | **{{ p(imp) }}** | **{{ e(outlook) }}** |
-                  | Generating | Using | {{ 'Discharging ↗' if b > 15 else 'Charging ↙' if b < -15 else 'Idle' }} | Import | Today total |
-                  | | | {{ states(soc) }}% SOC | **{{ p(exp) }}** export | **{{ e(remaining) }}** remaining |
-                  | | | | | **{{ e(tomorrow) }}** tomorrow |
+                  | **{{ p(solar) }}** | **{{ p(home) }}** | **{{ p(battery, true) }}** | **{{ p(imp) }}** | **{{ e(outlook) }} Today** |
+                  | Generating | Using | {{ 'Discharging ↗' if b > 15 else 'Charging ↙' if b < -15 else 'Idle' }} | Import | **{{ e(remaining) }}** remaining |
+                  | | | {{ states(soc) }}% SOC | **{{ p(exp) }}** export | **{{ e(tomorrow) }}** tomorrow |
 
                   **{{ 'Grid → House' if gi > 0 else 'House → Grid' if ge > 0 else 'Grid idle' }}** · **{{ states('sensor.saj_h2_safe_monitor_operating_mode') }}**
 
