@@ -25,6 +25,7 @@ SENSORS = {
     "grid_import": (None, "Grid import (direction unverified)", "W", 1, False, 0, 30000),
     "grid_export": (None, "Grid export (direction unverified)", "W", 1, False, 0, 30000),
     "battery_stored_energy": (None, "Estimated battery energy", "kWh", 1, False, 0, 100),
+    "battery_activity": (None, "Battery activity", None, 1, False, 0, 0),
 }
 # 32-bit counters: high word first, units 0.01 kWh (see upstream reader).
 # Offsets within 0x40BF block for solar and battery.
@@ -71,6 +72,13 @@ def aggregate_solar_power(readings):
 
 def derived_values(readings, capacity_kwh=DEFAULT_BATTERY_CAPACITY_KWH):
     readings["total_pv_power"] = aggregate_solar_power(readings)
+    battery = readings.get("battery_power")
+    # Positive battery watts matched discharge in the user's SAJ app.
+    readings["battery_activity"] = (
+        None if battery is None else
+        "Discharging" if battery > 15 else
+        "Charging" if battery < -15 else "Idle"
+    )
     soc = readings.get("battery_soc")
     readings["battery_stored_energy"] = round(soc * capacity_kwh / 100, 2) if soc is not None and 0 < capacity_kwh <= 100 else None
     grid = readings.get("grid_power")
