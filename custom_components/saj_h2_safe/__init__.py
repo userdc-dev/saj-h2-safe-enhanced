@@ -36,8 +36,8 @@ class SajSafeCoordinator(DataUpdateCoordinator):
                 sig = inspect.signature(read).parameters
                 unit_kw = {"device_id": 1} if "device_id" in sig else {"slave": 1}
                 result = {}
-                # Only measurement registers. PV1, PV2, PV3 are read together.
-                for address, count in ((0x4069, 7), (0x4071, 9)):
+                # Only measurement registers. No settings/control writes.
+                for address, count in ((0x4069, 7), (0x4071, 9), (0x40A0, 14)):
                     response = await read(address=address, count=count, **unit_kw)
                     if response is None or response.isError() or len(response.registers) != count:
                         raise UpdateFailed(f"Invalid Modbus response for {address:#06x}")
