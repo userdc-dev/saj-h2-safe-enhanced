@@ -1,0 +1,26 @@
+# Optional utility_meter helpers for exact THIS WEEK totals.
+# Add this block to configuration.yaml only if utility_meter: is NOT already defined.
+# If it is defined, MERGE the named meters beneath the existing section instead.
+# This does not contact or write to the inverter.
+#
+# This-week counters start accumulating when these helpers are first created.
+# They do NOT reconstruct past weekly data before their creation.
+utility_meter:
+  saj_solar_this_week:
+    source: sensor.saj_h2_safe_monitor_solar_total
+    cycle: weekly
+  saj_home_this_week:
+    source: sensor.saj_h2_safe_monitor_home_consumed_total
+    cycle: weekly
+  saj_battery_charged_this_week:
+    source: sensor.saj_h2_safe_monitor_battery_charged_total
+    cycle: weekly
+  saj_battery_discharged_this_week:
+    source: sensor.saj_h2_safe_monitor_battery_discharged_total
+    cycle: weekly
+  saj_grid_sell_this_week_unverified:
+    source: sensor.saj_h2_safe_monitor_saj_grid_sell_unverified_total
+    cycle: weekly
+  saj_grid_feed_in_this_week_unverified:
+    source: sensor.saj_h2_safe_monitor_saj_grid_feed_in_unverified_total
+    cycle: weekly
