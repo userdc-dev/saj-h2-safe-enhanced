@@ -45,11 +45,19 @@ ENERGY_KEYS = {
     for group, (addr, offset, label) in ENERGY_GROUPS.items()
     for i, period in enumerate(PERIODS)
 }
+# Read-only display labels for this installation.
+# Code 3 is called "Off-grid" by the owner, while the upstream integration
+# labels AppMode=3 as "Passive". Do not assume those functions are identical.
+# This mapping is NEVER used to construct or send Modbus commands.
 MODE_LABELS = {
     0: "Self-consumption",
-    1: "Time-of-use / scheduled",
-    3: "Passive control",
+    1: "Time-of-use",
+    2: "Backup (avoid)",
+    3: "Off-grid / Passive (firmware label unverified; avoid)",
 }
+# Non-negotiable control policy for a future opt-in write layer:
+# no commands may select Backup, Off-grid, or Passive on this installation.
+BLOCKED_MODE_CODES = frozenset({2, 3})
 def decode(raw, signed, scale, low, high):
     if not isinstance(raw, int) or not 0 <= raw <= 65535:
         return None
