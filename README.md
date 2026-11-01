@@ -1,5 +1,7 @@
 # SAJ H2 Safe Enhanced v0.3.0 — Experimental, read-only
 
+> **Continuing this project in a new chat?** Read [PROJECT_HANDOFF.md](PROJECT_HANDOFF.md) first. It records installed-vs-GitHub status, device mappings, safety restrictions, dashboard preferences, solar forecast assumptions, and next steps.
+
 Custom local Modbus integration for Home Assistant, developed using the public register mappings in
 [stanus74/home-assistant-saj-h2-modbus](https://github.com/stanus74/home-assistant-saj-h2-modbus) and
 actual H2 data from the device owner's SAJ app.
