@@ -3,6 +3,7 @@ from datetime import timedelta
 import asyncio
 import inspect
 import logging
+from time import monotonic
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -20,10 +21,16 @@ class SajSafeCoordinator(DataUpdateCoordinator):
         self.entry = entry
         self._lock = asyncio.Lock()
         self.failures = 0
+        self._counter_cache = {}
+        self._counter_updated_at = 0.0
+        self._mode_cache = None
+        self._mode_updated_at = 0.0
         super().__init__(
             hass, _LOGGER, name="SAJ H2 Safe Enhanced",
             update_interval=timedelta(
-                seconds=max(30, entry.data.get("scan_interval", DEFAULT_SCAN_INTERVAL))
+                # Existing installations stored a 60s interval in entry.data.
+                # Live update rate is now independently set to 10s by default.
+                seconds=max(5, min(60, int(entry.options.get("live_scan_interval", 10))))
             ),
         )
 
@@ -67,28 +74,38 @@ class SajSafeCoordinator(DataUpdateCoordinator):
                 )
                 derived_values(parsed, capacity)
 
-                # Read-only mode codes: unmapped codes are displayed explicitly.
-                try:
-                    code = (await fetch(0x3647, 1))[0]
-                    parsed["operating_mode"] = MODE_LABELS.get(code, f"Unknown (code {code})")
-                except Exception as exc:
-                    _LOGGER.debug("Operating mode unavailable: %s", exc)
-                    parsed["operating_mode"] = None
-
-                # Optional energy counter blocks. Failure of either block must
-                # not suppress live readings or reuse stale energy data.
-                for start in (0x40BF, 0x40DF):
+                now = monotonic()
+                # Slow-changing operating mode and energy counters are refreshed
+                # once per minute, independent of the 10-second live readings.
+                if self._mode_cache is None or now - self._mode_updated_at >= 60:
                     try:
-                        words = await fetch(start, 32)
-                        result.update({start + n: value for n, value in enumerate(words)})
+                        code = (await fetch(0x3647, 1))[0]
+                        self._mode_cache = MODE_LABELS.get(code, f"Unknown (code {code})")
+                        self._mode_updated_at = now
                     except Exception as exc:
-                        _LOGGER.debug("Optional energy block %04X unavailable: %s", start, exc)
+                        _LOGGER.debug("Operating mode temporarily unavailable: %s", exc)
+                parsed["operating_mode"] = self._mode_cache
 
-                for key, (address, _) in ENERGY_KEYS.items():
-                    if address in result and address + 1 in result:
-                        parsed[key] = decode_energy(result[address], result[address + 1])
-                    else:
-                        parsed[key] = None
+                if not self._counter_cache or now - self._counter_updated_at >= 60:
+                    new_counters = {}
+                    # An incomplete block must not replace previously good
+                    # counters with zero or corrupt the live readings.
+                    for start in (0x40BF, 0x40DF):
+                        try:
+                            words = await fetch(start, 32)
+                            for key, (address, _) in ENERGY_KEYS.items():
+                                if start <= address and address + 1 < start + 32:
+                                    new_counters[key] = decode_energy(
+                                        words[address - start], words[address - start + 1]
+                                    )
+                        except Exception as exc:
+                            _LOGGER.debug("Energy block %04X temporarily unavailable: %s", start, exc)
+                    if new_counters:
+                        self._counter_cache.update(new_counters)
+                        if len(new_counters) == len(ENERGY_KEYS):
+                            self._counter_updated_at = now
+                for key in ENERGY_KEYS:
+                    parsed[key] = self._counter_cache.get(key)
 
                 self.failures = 0
                 return parsed
