@@ -20,6 +20,10 @@ assert m.ENERGY_KEYS["home_today"][0] == 0x40DF
 assert m.ENERGY_KEYS["grid_sell_today"][0] == 0x40EF
 assert m.ENERGY_KEYS["grid_feed_in_today"][0] == 0x40F7
 assert m.MODE_LABELS[0] == "Self-consumption"
+assert m.MODE_LABELS[1] == "Time-of-use"
+assert "Backup" in m.MODE_LABELS[2]
+assert "Off-grid" in m.MODE_LABELS[3]
+assert m.BLOCKED_MODE_CODES == frozenset({2, 3})
 sample = [2839, 124, 354, 3231, 83, 267, 3424, 101, 341]
 readings = {
     k: m.decode(sample[addr - 0x4071], signed, factor, low, high)
