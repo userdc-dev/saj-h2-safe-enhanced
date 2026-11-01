@@ -182,3 +182,98 @@ views:
           - change
         entities:
           - sensor.saj_h2_safe_monitor_solar_total
+
+  - title: Solar Forecast
+    path: solar-forecast
+    icon: mdi:weather-sunny
+    type: panel
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            title: SolarCast · Live-informed forecast
+            content: |
+              {% set today = states('sensor.saj_h2_safe_monitor_today_s_solar_forecast') %}
+              {% set outlook = states('sensor.saj_h2_safe_monitor_today_s_solar_outlook_actual_remaining') %}
+              {% set tomorrow = states('sensor.saj_h2_safe_monitor_tomorrow_s_solar_forecast') %}
+              {% set remain = states('sensor.saj_h2_safe_monitor_solar_forecast_remaining_today') %}
+              {% set actual = states('sensor.saj_h2_safe_monitor_solar_today') %}
+              {% macro val(v) -%}
+              {{- ('%.2f kWh' | format(v | float)) if is_number(v) else '—' -}}
+              {%- endmacro %}
+              ## ☀️ Solar generation outlook
+
+              | Produced today | Remaining today | End-of-day outlook | Tomorrow |
+              |:---:|:---:|:---:|:---:|
+              | **{{ val(actual) }}** | **{{ val(remain) }}** | **{{ val(outlook) }}** | **{{ val(tomorrow) }}** |
+
+              *End-of-day outlook combines measured solar so far with the forecast remaining. Forecasts are estimates, not inverter commands.*
+
+              {{ states('sensor.saj_h2_safe_monitor_forecast_learning') }} · Updated {{ states('sensor.saj_h2_safe_monitor_weather_forecast_updated') }}
+
+          - type: horizontal-stack
+            cards:
+              - type: markdown
+                title: Next seven days
+                content: |
+                  {% set days = state_attr('sensor.saj_h2_safe_monitor_today_s_solar_forecast', 'daily') or [] %}
+                  {% if days %}
+                  {% set mx = [days | map(attribute='kwh') | max, 0.1] | max %}
+                  | Day | Energy | Relative output |
+                  |:---|---:|:---|
+                  {% for d in days %}
+                  | {{ d.date[5:] }} | **{{ '%.1f' | format(d.kwh) }} kWh** | {{ '▰' * ((d.kwh / mx * 14) | int) }}{{ '▱' * (14 - (d.kwh / mx * 14) | int) }} |
+                  {% endfor %}
+                  {% else %}
+                  Waiting for the weather forecast. Check Home Assistant's connection to Open-Meteo.
+                  {% endif %}
+              - type: markdown
+                title: Next twelve hours
+                content: |
+                  {% set hours = state_attr('sensor.saj_h2_safe_monitor_today_s_solar_forecast', 'hourly') or [] %}
+                  {% if hours %}
+                  | Hour starting | Estimated production | Cloud |
+                  |:---|---:|---:|
+                  {% for h in hours[:12] %}
+                  | {{ h.time }} | {{ '%.2f' | format(h.kwh) }} kWh | {{ h.cloud }}% |
+                  {% endfor %}
+                  {% else %}
+                  Hourly weather data is not available yet.
+                  {% endif %}
+          - type: horizontal-stack
+            cards:
+              - type: entities
+                title: Forecast details
+                entities:
+                  - entity: sensor.saj_h2_safe_monitor_today_s_solar_forecast
+                    name: Full-day forecast
+                  - entity: sensor.saj_h2_safe_monitor_solar_forecast_remaining_today
+                    name: Remaining today
+                  - entity: sensor.saj_h2_safe_monitor_today_s_solar_outlook_actual_remaining
+                    name: Today · measured + remaining
+                  - entity: sensor.saj_h2_safe_monitor_tomorrow_s_solar_forecast
+                    name: Tomorrow
+                  - entity: sensor.saj_h2_safe_monitor_next_7_days_solar_forecast
+                    name: Next 7 days
+                  - entity: sensor.saj_h2_safe_monitor_forecast_learning
+                    name: Learning status
+              - type: history-graph
+                title: Actual vs projected · Today
+                hours_to_show: 24
+                entities:
+                  - entity: sensor.saj_h2_safe_monitor_solar_today
+                    name: Solar actual
+                  - entity: sensor.saj_h2_safe_monitor_today_s_solar_outlook_actual_remaining
+                    name: Solar outlook
+          - type: markdown
+            title: How the forecast improves
+            content: |
+              **Model:** 30 × 440 W bifacial solar panels, in groups of 9 / 15 / 6 with initial compass azimuths 29° / 27° / 299°, tilt 25°, combined efficiency 87%, capped at 10 kW AC.
+
+              Uses Open-Meteo tilted irradiance for each group and your Home Assistant location. This is an **initial configuration copied from SolarCast** — check roof orientation and panel counts before relying on predictions.
+
+              **Self-correction:** Only relatively clear hours with at least 45 minutes of reliable actual power readings are eligible for hour-of-day adjustment. Learned adjustments are capped to avoid runaway changes.
+
+              **Important:** Cloud forecast errors, shade, and inverter curtailment may all reduce actual output. A low reading alone cannot prove which cause applies. Learning skips high-battery-SOC conditions that could represent curtailment. This is not a weather-independent guarantee.
+
+              **Privacy and safety:** Home Assistant shares its configured coordinates with Open-Meteo to request forecasts. The integration remains read-only and never adjusts inverter operating modes.
