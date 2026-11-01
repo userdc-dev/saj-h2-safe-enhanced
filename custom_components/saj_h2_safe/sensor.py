@@ -30,7 +30,7 @@ class SajSafeSensor(CoordinatorEntity, SensorEntity):
         self.key = key
         if key in SENSORS:
             _, name, unit, *_ = SENSORS[key]
-            state_class = SensorStateClass.MEASUREMENT
+            state_class = SensorStateClass.MEASUREMENT if unit is not None else None
         elif key == "operating_mode":
             name, unit, state_class = "Operating mode", None, None
         else:
