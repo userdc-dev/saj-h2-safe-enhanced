@@ -36,19 +36,13 @@ views:
           {% set ge = states(export) | float(0) %}
           ## ⚡ SAJ Energy Flow
 
-          | ☀️ SOLAR | 🏠 HOUSE | 🔋 BATTERY |
-          |:---:|:---:|:---:|
-          | **{{ p(solar) }}** | **{{ p(home) }}** | **{{ states(soc) }}%** |
-          | Solar ➜ House | Live demand | {{ 'Battery ➜ House' if b > 15 else 'House ➜ Battery' if b < -15 else 'Idle' }} |
-          | | | **{{ p(battery, true) }}** |
+          | ☀️ SOLAR | 🏠 HOUSE | 🔋 BATTERY | 🏭 GRID |
+          |:---:|:---:|:---:|:---:|
+          | **{{ p(solar) }}** | **{{ p(home) }}** | **{{ states(soc) }}%** | **{{ p(import) }}** import |
+          | Solar → House | Live demand | {{ 'Discharging' if b > 15 else 'Charging' if b < -15 else 'Idle' }} | **{{ p(export) }}** export |
+          | | | **{{ p(battery, true) }}** | {{ 'Grid → House' if gi > 0 else 'House → Grid' if ge > 0 else 'No exchange' }} |
 
-          {% if gi > 0 %}
-          **🏭 GRID ➜ 🏠 HOUSE** — Import **{{ p(import) }}** *(direction provisional)*
-          {% elif ge > 0 %}
-          **🏠 HOUSE ➜ 🏭 GRID** — Export **{{ p(export) }}** *(direction provisional)*
-          {% else %}
-          **🏭 GRID:** {{ p(import) }} import / {{ p(export) }} export
-          {% endif %}
+          *Grid import/export direction is provisional until confirmed against a nonzero SAJ app reading.*
 
           **Battery stored:** {{ e('sensor.saj_h2_safe_monitor_estimated_battery_energy') }} *(estimated from nominal capacity)*
 
