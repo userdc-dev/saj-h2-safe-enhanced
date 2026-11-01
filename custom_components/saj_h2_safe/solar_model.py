@@ -15,7 +15,8 @@ PANEL_GROUPS = (
     (6, 440, 299, 25),
 )
 SYSTEM_EFFICIENCY = 0.87
-INVERTER_AC_KW = 10.0
+INVERTER_AC_KW = 10.0  # AC output limit, NOT a cap on PV generation
+BATTERY_DC_CHARGE_KW = 10.0  # illustrative charge-side ceiling; verify hardware
 FORECAST_DAYS = 7
 MIN_LEARNING_COVERAGE_SECONDS = 2700  # >=45 minutes of actual observation
 MAX_HOURLY_LEARNING_CLOUD = 25  # learn shading on comparatively clear hours
@@ -36,8 +37,11 @@ def validate_groups(groups):
             raise ValueError("Invalid azimuth or tilt")
 
 def hour_records(weather_series, groups=PANEL_GROUPS, efficiency=SYSTEM_EFFICIENCY,
-                 ac_limit_kw=INVERTER_AC_KW, hourly_factors=None, timezone_name='Australia/Adelaide'):
-    """Return UTC interval end -> hourly forecast with power in kW and energy kWh.
+                 hourly_factors=None, timezone_name='Australia/Adelaide'):
+    """Return UTC interval end -> total panel-side hourly forecast in kWh.
+
+    No 10 kW AC clipping: PV may feed simultaneous AC loads and DC battery charging.
+    This predicts panel energy, NOT guaranteed delivered AC or chargeable DC.
 
     All groups MUST have matching UTC timestamps; incomplete hours are omitted,
     not silently replaced with zero.
@@ -45,7 +49,7 @@ def hour_records(weather_series, groups=PANEL_GROUPS, efficiency=SYSTEM_EFFICIEN
     validate_groups(groups)
     if len(weather_series) != len(groups):
         raise ValueError("One forecast irradiance series needed per group")
-    if not 0 < efficiency <= 1 or not 0 < ac_limit_kw <= 100:
+    if not 0 < efficiency <= 1:
         raise ValueError("Invalid forecast system parameters")
     maps = []
     for series in weather_series:
@@ -70,14 +74,14 @@ def hour_records(weather_series, groups=PANEL_GROUPS, efficiency=SYSTEM_EFFICIEN
             clouds.append(float(cloud))
         if not valid:
             continue
-        kw = min(ac_limit_kw, max(0, kw * efficiency))
+        kw = max(0, kw * efficiency)  # estimated total PV-side power; not AC export
         local_slot = datetime.fromtimestamp(end_epoch - 1, timezone.utc).astimezone(ZoneInfo(timezone_name)).hour
         factor = (hourly_factors or {}).get(str(local_slot), 1.0)
         if not 0.65 <= float(factor) <= 1.15:
             factor = 1.0
         result[end_epoch] = {
             "base_kwh": round(kw, 4),
-            "kwh": round(min(ac_limit_kw, kw * float(factor)), 4),
+            "kwh": round(kw * float(factor), 4),
             "cloud": round(sum(clouds) / len(clouds)),
         }
     return result
