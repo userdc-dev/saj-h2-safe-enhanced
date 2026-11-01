@@ -1,0 +1,141 @@
+# SAJ H2 Safe Enhanced dashboard (built-in Home Assistant cards only)
+# Paste into the RAW configuration editor of a new YAML dashboard.
+# Entity IDs assume the default device name "SAJ H2 Safe Monitor".
+# If an entity was renamed in Home Assistant, adjust the IDs here.
+title: SAJ Energy
+views:
+  - title: Live
+    path: live
+    icon: mdi:home-lightning-bolt
+    cards:
+      - type: markdown
+        content: |
+          ## SAJ H2 · Live Energy
+          Read-only local monitoring. Data refreshes at your configured polling interval.
+          **Grid import/export direction is provisional** until verified against
+          a non-zero flow in the SAJ app.
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: gauge
+            entity: sensor.saj_h2_safe_monitor_battery_state_of_charge
+            name: Battery
+            min: 0
+            max: 100
+            severity:
+              red: 0
+              yellow: 20
+              green: 45
+          - type: entity
+            entity: sensor.saj_h2_safe_monitor_estimated_battery_energy
+            name: Stored battery energy (estimated)
+            icon: mdi:battery
+          - type: entity
+            entity: sensor.saj_h2_safe_monitor_total_solar_power
+            name: Solar
+            icon: mdi:solar-power
+          - type: entity
+            entity: sensor.saj_h2_safe_monitor_home_consumption
+            name: Home
+            icon: mdi:home-lightning-bolt
+          - type: entity
+            entity: sensor.saj_h2_safe_monitor_grid_import_direction_unverified
+            name: Grid import (provisional)
+            icon: mdi:transmission-tower-import
+          - type: entity
+            entity: sensor.saj_h2_safe_monitor_grid_export_direction_unverified
+            name: Grid export (provisional)
+            icon: mdi:transmission-tower-export
+      - type: entities
+        title: Battery
+        entities:
+          - entity: sensor.saj_h2_safe_monitor_operating_mode
+            name: Operating mode
+          - entity: sensor.saj_h2_safe_monitor_battery_power
+            name: Battery power (signed)
+          - entity: sensor.saj_h2_safe_monitor_battery_state_of_charge
+            name: State of charge
+          - entity: sensor.saj_h2_safe_monitor_estimated_battery_energy
+            name: Stored energy (estimate)
+      - type: history-graph
+        title: Power · Last 24 hours
+        hours_to_show: 24
+        entities:
+          - entity: sensor.saj_h2_safe_monitor_total_solar_power
+          - entity: sensor.saj_h2_safe_monitor_home_consumption
+          - entity: sensor.saj_h2_safe_monitor_battery_power
+          - entity: sensor.saj_h2_safe_monitor_grid_power_raw_signed
+      - type: history-graph
+        title: Battery SOC · Last 24 hours
+        hours_to_show: 24
+        entities:
+          - entity: sensor.saj_h2_safe_monitor_battery_state_of_charge
+      - type: entities
+        title: Solar panel inputs
+        entities:
+          - sensor.saj_h2_safe_monitor_pv1_power
+          - sensor.saj_h2_safe_monitor_pv2_power
+          - sensor.saj_h2_safe_monitor_pv3_power
+
+  - title: Energy
+    path: energy
+    icon: mdi:chart-bar
+    cards:
+      - type: markdown
+        content: |
+          ## Energy totals
+          kWh counters come from the inverter, not estimates from instant watts.
+          Weekly bar charts use Home Assistant's long-term statistics.
+          Grid energy names remain the SAJ register names until import/export
+          direction and counter semantics are verified.
+      - type: entities
+        title: Today
+        entities:
+          - sensor.saj_h2_safe_monitor_solar_today
+          - sensor.saj_h2_safe_monitor_home_consumed_today
+          - sensor.saj_h2_safe_monitor_battery_charged_today
+          - sensor.saj_h2_safe_monitor_battery_discharged_today
+          - sensor.saj_h2_safe_monitor_saj_grid_sell_unverified_today
+          - sensor.saj_h2_safe_monitor_saj_grid_feed_in_unverified_today
+      - type: entities
+        title: This month
+        entities:
+          - sensor.saj_h2_safe_monitor_solar_month
+          - sensor.saj_h2_safe_monitor_home_consumed_month
+          - sensor.saj_h2_safe_monitor_battery_charged_month
+          - sensor.saj_h2_safe_monitor_battery_discharged_month
+      - type: entities
+        title: This year
+        entities:
+          - sensor.saj_h2_safe_monitor_solar_year
+          - sensor.saj_h2_safe_monitor_home_consumed_year
+          - sensor.saj_h2_safe_monitor_battery_charged_year
+          - sensor.saj_h2_safe_monitor_battery_discharged_year
+      - type: statistics-graph
+        title: Weekly solar generation
+        chart_type: bar
+        period: week
+        days_to_show: 56
+        stat_types:
+          - change
+        entities:
+          - sensor.saj_h2_safe_monitor_solar_total
+      - type: statistics-graph
+        title: Weekly home usage
+        chart_type: bar
+        period: week
+        days_to_show: 56
+        stat_types:
+          - change
+        entities:
+          - sensor.saj_h2_safe_monitor_home_consumed_total
+      - type: statistics-graph
+        title: Monthly solar production
+        chart_type: bar
+        period: month
+        days_to_show: 365
+        stat_types:
+          - change
+        entities:
+          - sensor.saj_h2_safe_monitor_solar_total
