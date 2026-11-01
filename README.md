@@ -1,4 +1,4 @@
-# SAJ H2 Safe Enhanced v0.2.1 — Experimental, read-only
+# SAJ H2 Safe Enhanced v0.3.0 — Experimental, read-only
 
 Custom local Modbus integration for Home Assistant, developed using the public register mappings in
 [stanus74/home-assistant-saj-h2-modbus](https://github.com/stanus74/home-assistant-saj-h2-modbus) and
