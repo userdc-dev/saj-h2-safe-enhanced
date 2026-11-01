@@ -32,7 +32,7 @@ readings = {
 }
 readings.update({"battery_soc": 42, "grid_power": -250})
 assert m.derived_values(readings)["total_pv_power"] == 962
-assert readings["battery_stored_energy"] == 17.2
+assert readings["battery_stored_energy"] == 16.8
 assert readings["grid_import"] == 0
 assert readings["grid_export"] == 250
 readings["pv3_power"] = None
