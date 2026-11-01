@@ -26,6 +26,17 @@ actual H2 data from the device owner's SAJ app.
 - **Grid import/export polarity and sell/feed-in counters are not confirmed.** Do not use those derived entities for billing, automation, or Energy Dashboard billing calculations until verified.
 - Existing third-party inverter integrations or SAJ cloud controls are not disabled by this read-only integration.
 
+## Operating-mode safety policy (this installation)
+
+The owner's inverter reports AppMode at `0x3647`:
+- `0` — Self-consumption (display only).
+- `1` — Time-of-use (display only).
+- `2` — Backup (display only; owner reports undesired side effects affecting battery cycling / BMS reporting).
+- `3` — **Off-grid / Passive (ambiguous firmware terminology)**. The owner calls it Off-grid; the upstream implementation calls value 3 Passive. Display only; do not transmit.
+- Unknown values appear explicitly as unknown, not as a guessed mode.
+
+**Never expose commands that set modes 2 or 3** on this installation. In addition, never attempt off-grid or passive transitions through alternative registers. Only consider safe, separately verified controls for modes 0/1 in a later opt-in release. The v0.2.0 branch remains entirely **read-only**, with no device writes.
+
 ## Install / update from Kamrui server SSH
 
 ```bash
