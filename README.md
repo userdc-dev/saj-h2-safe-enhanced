@@ -1,4 +1,4 @@
-# SAJ H2 Safe Enhanced v0.2.0 — Experimental, read-only
+# SAJ H2 Safe Enhanced v0.2.1 — Experimental, read-only
 
 Custom local Modbus integration for Home Assistant, developed using the public register mappings in
 [stanus74/home-assistant-saj-h2-modbus](https://github.com/stanus74/home-assistant-saj-h2-modbus) and
@@ -16,7 +16,7 @@ actual H2 data from the device owner's SAJ app.
 ## Safety and accuracy
 
 - No write functions, numbers, switches, buttons, or inverter-modifying services.
-- Modbus function 03 reads only. Socket timeout 5 seconds, retry count zero, default polling 60 seconds.
+- Modbus function 03 reads only. Socket timeout 5 seconds, retry count zero, default live polling 10 seconds; energy totals and mode every 60 seconds.
 - Bad data is rejected; auxiliary blocks may show unavailable without disabling the core live sensors.
 - Battery raw SOC 4300 was confirmed as 43.00%. Three PV inputs were confirmed by comparing 962 W to 978 W in the app.
 - The register `0x40BF` gave 16.59 kWh solar today, close to the official app's earlier 16.38 kWh.
@@ -35,7 +35,7 @@ The owner's inverter reports AppMode at `0x3647`:
 - `3` — **Off-grid / Passive (ambiguous firmware terminology)**. The owner calls it Off-grid; the upstream implementation calls value 3 Passive. Display only; do not transmit.
 - Unknown values appear explicitly as unknown, not as a guessed mode.
 
-**Never expose commands that set modes 2 or 3** on this installation. In addition, never attempt off-grid or passive transitions through alternative registers. Only consider safe, separately verified controls for modes 0/1 in a later opt-in release. The v0.2.0 branch remains entirely **read-only**, with no device writes.
+**Never expose commands that set modes 2 or 3** on this installation. In addition, never attempt off-grid or passive transitions through alternative registers. Only consider safe, separately verified controls for modes 0/1 in a later opt-in release. The current branch remains entirely **read-only**, with no device writes.
 
 ## Install / update from Kamrui server SSH
 
@@ -49,7 +49,7 @@ docker restart homeassistant
 
 **Do not place backups in `custom_components`**: Home Assistant tries to load every subfolder as an integration.
 
-The initial configuration is SAJ device IP, port 502, poll interval 60 seconds. Automatic discovery and DHCP failover are not implemented; reserve its IP in your router.
+The initial configuration is SAJ device IP, port 502, original saved 60-second poll setting is overridden by the new live 10-second polling default; optional `live_scan_interval` may be set to 5–60 seconds. Automatic discovery and DHCP failover are not implemented; reserve its IP in your router.
 
 ## Dashboard setup
 
