@@ -7,100 +7,110 @@ views:
   - title: Live
     path: live
     icon: mdi:home-lightning-bolt
+    type: panel
     cards:
-      - type: markdown
-        title: Live energy flow
-        content: |
-          {% macro p(entity, absolute=false) -%}
-            {%- set raw = states(entity) -%}
-            {%- if is_number(raw) -%}
-              {%- set v = raw | float | abs if absolute else raw | float -%}
-              {{- ('%.2f kW' | format(v / 1000)) if (v | abs >= 1000) else ('%.0f W' | format(v)) -}}
-            {%- else -%}—{%- endif -%}
-          {%- endmacro %}
-          {% macro e(entity) -%}
-            {%- set raw = states(entity) -%}
-            {%- if is_number(raw) -%}
-              {%- set v = raw | float -%}
-              {{- ('%.2f kWh' | format(v)) if (v | abs >= 1) else ('%.0f Wh' | format(v * 1000)) -}}
-            {%- else -%}—{%- endif -%}
-          {%- endmacro %}
-          {% set solar = 'sensor.saj_h2_safe_monitor_total_solar_power' %}
-          {% set home = 'sensor.saj_h2_safe_monitor_home_consumption' %}
-          {% set battery = 'sensor.saj_h2_safe_monitor_battery_power' %}
-          {% set soc = 'sensor.saj_h2_safe_monitor_battery_state_of_charge' %}
-          {% set import = 'sensor.saj_h2_safe_monitor_grid_import_direction_unverified' %}
-          {% set export = 'sensor.saj_h2_safe_monitor_grid_export_direction_unverified' %}
-          {% set b = states(battery) | float(0) %}
-          {% set gi = states(import) | float(0) %}
-          {% set ge = states(export) | float(0) %}
-          ## ⚡ SAJ Energy Flow
-
-          | ☀️ SOLAR | 🏠 HOUSE | 🔋 BATTERY | 🏭 GRID |
-          |:---:|:---:|:---:|:---:|
-          | **{{ p(solar) }}** | **{{ p(home) }}** | **{{ states(soc) }}%** | **{{ p(import) }}** import |
-          | Solar → House | Live demand | {{ 'Discharging' if b > 15 else 'Charging' if b < -15 else 'Idle' }} | **{{ p(export) }}** export |
-          | | | **{{ p(battery, true) }}** | {{ 'Grid → House' if gi > 0 else 'House → Grid' if ge > 0 else 'No exchange' }} |
-
-          *Grid import/export direction is provisional until confirmed against a nonzero SAJ app reading.*
-
-          **Battery stored:** {{ e('sensor.saj_h2_safe_monitor_estimated_battery_energy') }} *(estimated from nominal capacity)*
-
-          **Operating mode:** {{ states('sensor.saj_h2_safe_monitor_operating_mode') }}
-
-          <small>Numbers refresh from live inverter readings. Grid direction is not yet verified against a nonzero SAJ app reading. All controls remain read-only.</small>
-      - type: grid
-        columns: 2
-        square: false
+      - type: vertical-stack
         cards:
-          - type: gauge
-            entity: sensor.saj_h2_safe_monitor_battery_state_of_charge
-            name: Battery charge
-            min: 0
-            max: 100
-            severity:
-              red: 0
-              yellow: 20
-              green: 45
-          - type: markdown
-            title: Battery status
-            content: |
-              {% set mode = states('sensor.saj_h2_safe_monitor_operating_mode') %}
-              {% set activity = states('sensor.saj_h2_safe_monitor_battery_activity') %}
-              {% set watts = states('sensor.saj_h2_safe_monitor_battery_power') %}
-              {% set stored = states('sensor.saj_h2_safe_monitor_estimated_battery_energy') %}
-              **{{ activity }}**
+          # Fixed top row: live flow LEFT, 24-hour power chart RIGHT.
+          - type: horizontal-stack
+            cards:
+              - type: markdown
+                title: Live energy flow
+                content: |
+                  {% macro p(entity, absolute=false) -%}
+                    {%- set raw = states(entity) -%}
+                    {%- if is_number(raw) -%}
+                      {%- set v = raw | float | abs if absolute else raw | float -%}
+                      {{- ('%.2f kW' | format(v / 1000)) if (v | abs >= 1000) else ('%.0f W' | format(v)) -}}
+                    {%- else -%}—{%- endif -%}
+                  {%- endmacro %}
+                  {% macro e(entity) -%}
+                    {%- set raw = states(entity) -%}
+                    {%- if is_number(raw) -%}
+                      {%- set v = raw | float -%}
+                      {{- ('%.2f kWh' | format(v)) if (v | abs >= 1) else ('%.0f Wh' | format(v * 1000)) -}}
+                    {%- else -%}—{%- endif -%}
+                  {%- endmacro %}
+                  {% set solar = 'sensor.saj_h2_safe_monitor_total_solar_power' %}
+                  {% set home = 'sensor.saj_h2_safe_monitor_home_consumption' %}
+                  {% set battery = 'sensor.saj_h2_safe_monitor_battery_power' %}
+                  {% set soc = 'sensor.saj_h2_safe_monitor_battery_state_of_charge' %}
+                  {% set imp = 'sensor.saj_h2_safe_monitor_grid_import_direction_unverified' %}
+                  {% set exp = 'sensor.saj_h2_safe_monitor_grid_export_direction_unverified' %}
+                  {% set b = states(battery) | float(0) %}
+                  {% set gi = states(imp) | float(0) %}
+                  {% set ge = states(exp) | float(0) %}
+                  | ☀️ Solar | 🏠 House | 🔋 Battery | ⚡ Grid |
+                  |:---:|:---:|:---:|:---:|
+                  | **{{ p(solar) }}** | **{{ p(home) }}** | **{{ p(battery, true) }}** | **{{ p(imp) }}** |
+                  | Generating | Using | {{ 'Discharging ↗' if b > 15 else 'Charging ↙' if b < -15 else 'Idle' }} | Import |
+                  | | | {{ states(soc) }}% SOC | **{{ p(exp) }}** export |
 
-              {% if is_number(watts) %}
-              {{ '%.2f kW' | format(watts | float | abs / 1000) if watts | float | abs >= 1000 else '%.0f W' | format(watts | float | abs) }}
-              {% else %}
-              —
-              {% endif %}
+                  **{{ 'Grid → House' if gi > 0 else 'House → Grid' if ge > 0 else 'Grid idle' }}** · **{{ states('sensor.saj_h2_safe_monitor_operating_mode') }}**
 
-              **Stored:** {{ '%.2f kWh' | format(stored | float) if is_number(stored) and stored | float >= 1 else '%.0f Wh' | format(stored | float * 1000) if is_number(stored) else '—' }}
+                  🔋 Stored {{ e('sensor.saj_h2_safe_monitor_estimated_battery_energy') }} *(estimate)*
 
-              **Mode:** {{ mode }}
-      - type: markdown
-        title: PV inputs
-        content: |
-          {% macro fmt(entity) -%}
-          {%- set v = states(entity) -%}
-          {{- ('%.2f kW' | format(v | float / 1000)) if is_number(v) and v | float >= 1000 else ('%.0f W' | format(v | float)) if is_number(v) else '—' -}}
-          {%- endmacro %}
-          **PV1:** {{ fmt('sensor.saj_h2_safe_monitor_pv1_power') }} · **PV2:** {{ fmt('sensor.saj_h2_safe_monitor_pv2_power') }} · **PV3:** {{ fmt('sensor.saj_h2_safe_monitor_pv3_power') }}
-      - type: history-graph
-        title: Power · Last 24 hours
-        hours_to_show: 24
-        entities:
-          - entity: sensor.saj_h2_safe_monitor_total_solar_power
-          - entity: sensor.saj_h2_safe_monitor_home_consumption
-          - entity: sensor.saj_h2_safe_monitor_battery_power
-          - entity: sensor.saj_h2_safe_monitor_grid_power_raw_signed
-      - type: history-graph
-        title: Battery SOC · Last 24 hours
-        hours_to_show: 24
-        entities:
-          - entity: sensor.saj_h2_safe_monitor_battery_state_of_charge
+                  *Grid direction provisional; integration is read-only.*
+              - type: history-graph
+                title: Power · 24 hours
+                hours_to_show: 24
+                refresh_interval: 10
+                entities:
+                  - entity: sensor.saj_h2_safe_monitor_total_solar_power
+                    name: Total PV
+                  - entity: sensor.saj_h2_safe_monitor_home_consumption
+                    name: House Load
+                  - entity: sensor.saj_h2_safe_monitor_battery_power
+                    name: Battery Power
+                  - entity: sensor.saj_h2_safe_monitor_grid_power_raw_signed
+                    name: Grid Power
+
+          # Smaller detail cards; no repeated battery or flow summaries.
+          - type: horizontal-stack
+            cards:
+              - type: gauge
+                entity: sensor.saj_h2_safe_monitor_battery_state_of_charge
+                name: Battery SOC
+                min: 0
+                max: 100
+                severity:
+                  red: 0
+                  yellow: 20
+                  green: 45
+              - type: markdown
+                title: Battery
+                content: |
+                  {% set activity = states('sensor.saj_h2_safe_monitor_battery_activity') %}
+                  {% set watts = states('sensor.saj_h2_safe_monitor_battery_power') %}
+                  {% set stored = states('sensor.saj_h2_safe_monitor_estimated_battery_energy') %}
+                  **{{ activity }}**
+                  
+                  {% if is_number(watts) %}
+                  **{{ '%.2f kW' | format(watts | float | abs / 1000) if watts | float | abs >= 1000 else '%.0f W' | format(watts | float | abs) }}**
+                  {% else %}
+                  **—**
+                  {% endif %}
+
+                  Stored: {{ '%.2f kWh' | format(stored | float) if is_number(stored) and stored | float >= 1 else '%.0f Wh' | format(stored | float * 1000) if is_number(stored) else '—' }}
+              - type: markdown
+                title: PV inputs
+                content: |
+                  {% macro fmt(entity) -%}
+                  {%- set v = states(entity) -%}
+                  {{- ('%.2f kW' | format(v | float / 1000)) if is_number(v) and v | float >= 1000 else ('%.0f W' | format(v | float)) if is_number(v) else '—' -}}
+                  {%- endmacro %}
+                  ☀️ **PV1** · {{ fmt('sensor.saj_h2_safe_monitor_pv1_power') }}
+
+                  ☀️ **PV2** · {{ fmt('sensor.saj_h2_safe_monitor_pv2_power') }}
+
+                  ☀️ **PV3** · {{ fmt('sensor.saj_h2_safe_monitor_pv3_power') }}
+              - type: history-graph
+                title: Battery SOC · 24 hours
+                hours_to_show: 24
+                refresh_interval: 30
+                entities:
+                  - entity: sensor.saj_h2_safe_monitor_battery_state_of_charge
+                    name: Battery SOC
   - title: Energy
     path: energy
     icon: mdi:chart-bar
