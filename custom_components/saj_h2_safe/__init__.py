@@ -139,6 +139,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.warning("Solar forecast initial refresh failed (live readings still work): %s", exc)
     entry.async_on_unload(coordinator.async_add_listener(forecast.on_live_update))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    async def reload_on_options(_hass,updated_entry):
+        await _hass.config_entries.async_reload(updated_entry.entry_id)
+    entry.async_on_unload(entry.add_update_listener(reload_on_options))
     from homeassistant.helpers.event import async_track_time_interval
     async def persist_grid(_now=None):
         await coordinator.grid_totals.save()
