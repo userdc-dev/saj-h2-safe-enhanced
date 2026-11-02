@@ -26,6 +26,7 @@ jobs:
         run: |
           python tests/test_decode.py
           python tests/test_solar_model.py
+          python -m unittest discover -s tests -p 'test_monitoring.py'
       - name: Ensure Modbus write functions are absent
         run: |
           if grep -R -nE 'write_registers?\(|write_coils?\(' custom_components/saj_h2_safe --include='*.py'; then
