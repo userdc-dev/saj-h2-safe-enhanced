@@ -10,7 +10,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from pymodbus.client import AsyncModbusTcpClient
 from .solar_forecast import SajSolarForecastCoordinator
 from .grid_totals import GridTotals
-from .frontend_setup import async_register_frontend, async_ensure_dashboard
+from .frontend_setup import async_register_frontend, async_ensure_dashboard, async_ensure_card_resource
 from .const import (
     DEFAULT_SCAN_INTERVAL, DEFAULT_BATTERY_CAPACITY_KWH, SENSORS,
     ENERGY_KEYS, MODE_LABELS, decode, decode_energy, derived_values,
@@ -156,6 +156,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         @callback
         def dashboard_after_start(_event):
+            hass.async_create_task(async_ensure_card_resource(hass))
             hass.async_create_task(async_ensure_dashboard(hass))
 
         entry.async_on_unload(
