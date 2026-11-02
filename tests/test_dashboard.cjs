@@ -68,6 +68,15 @@ assert.ok(projectedPaths.length>0,
  "hourly forecast must draw a yellow SVG line (not isolated invisible points)");
 assert.ok(projectedPaths.some(n=>(n.attributes.d||"").includes("L")),
  "forecast path must connect successive hourly samples");
+assert.ok(txt.includes("v0.4.2"),"frontend version marker allows cache diagnosis");
+assert.ok(txt.includes("Projected solar (yellow)"),"visible forecast legend");
+assert.ok(txt.includes("Recorded solar (blue)"),"visible actual legend");
+// The missing-line bug must not recur when the hourly series has variable
+// but valid 60-minute interval timestamps and actual points are sparse.
+const forecastData=states[key("today_s_solar_forecast")].attributes.today_hourly;
+assert.equal(forecastData.length,24);
+assert.ok(projectedPaths[0].attributes["stroke-width"]>=3);
+
 
 for(const svg of svgs){assert.ok(svg.listeners.pointermove);assert.ok(svg.listeners.pointerdown);assert.ok(svg.listeners.keydown)}
 const inputs=all.filter(x=>x.tagName==="INPUT"&&x.readOnly);
