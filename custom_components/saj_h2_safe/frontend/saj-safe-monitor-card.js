@@ -181,35 +181,10 @@ shape("line",{x1:L,x2:R,y1:Y,y2:Y,stroke:"currentColor","stroke-opacity":.14});
 shape("text",{x:L-8,y:Y+4,fill:"currentColor","font-size":12,"text-anchor":"end"},v.toFixed(0))}
 for(let h=0;h<=24;h+=4){shape("text",{x:x(start+h*3600000),y:266,fill:"currentColor","font-size":12,"text-anchor":h===0?"start":h===24?"end":"middle"},String(h).padStart(2,"0")+":00")}
 shape("text",{x:13,y:13,fill:"currentColor","font-size":12},"kWh");
-// Weather projections arrive as hourly buckets, unlike much denser HA
-// Recorder samples. A universal 45-minute gap threshold made EVERY hourly
-// forecast sample a disconnected single point, hiding the yellow line.
-const plottedPaths={forecast:0,actual:0};
-// Weather prediction is an ordered hourly estimate. Draw an actual SVG
-// polyline with a 90-minute tolerance so normal 60-minute samples connect.
-// Recorder actuals use a separate, shorter gap rule to avoid invented data.
-for(const [kind,data,color,maxGap] of [
-  ["forecast",forecast,"#e6b650",90*60000],
-  ["actual",actual,"#59a9eb",45*60000]
-]){
+for(const [data,color] of [[forecast,"#e6b650"],[actual,"#59a9eb"]]){
 let segment=[],previous=null;
-const flush=()=>{
-  if(segment.length>1){
-    shape("path",{d:segment.map((q,i)=>(i?"L":"M")+x(q.t).toFixed(1)+","+
-      y(q.v).toFixed(1)).join(" "),fill:"none",stroke:color,
-      "stroke-width":kind==="forecast"?3.2:2.6,
-      "stroke-linejoin":"round","stroke-linecap":"round"});
-    plottedPaths[kind]++;
-  }
-  segment=[];
-};
-for(const q of data){
-  if(q.t<start||q.t>start+86400000)continue;
-  if(previous!==null&&q.t-previous>maxGap)flush();
-  segment.push(q);previous=q.t;
-}
-flush();
-}
+const flush=()=>{if(segment.length>1)shape("path",{d:segment.map((q,i)=>(i?"L":"M")+x(q.t).toFixed(1)+","+y(q.v).toFixed(1)).join(" "),fill:"none",stroke:color,"stroke-width":2.6});segment=[]};
+for(const q of data){if(q.t<start||q.t>start+86400000)continue;if(previous!==null&&q.t-previous>45*60000)flush();segment.push(q);previous=q.t}flush()}
 const cursor=shape("line",{x1:L,x2:L,y1:T,y2:B,stroke:"currentColor","stroke-dasharray":"4 4",visibility:"hidden"});
 shape("rect",{x:L,y:T,width:R-L,height:B-T,fill:"transparent","pointer-events":"all"});
 const tip=el("div","tooltip","Hover or tap for actual and predicted energy; blue is recorded, yellow is forecast.");
@@ -226,20 +201,7 @@ pred.style.color="#e6b650";act.style.color="#59a9eb";tip.append(pred,act)};
 const pointer=e=>{const b=svg.getBoundingClientRect();if(b.width)inspect(((e.clientX-b.left)/b.width*920-L)/(R-L))};
 svg.addEventListener("pointermove",pointer);svg.addEventListener("pointerdown",pointer);
 svg.addEventListener("keydown",e=>{if(!["ArrowLeft","ArrowRight"].includes(e.key))return;e.preventDefault();inspect(frac+(e.key==="ArrowRight"?1:-1)/288)});
-const legend=el("div","legend");
-for(const [label,color] of [["Projected solar (yellow)","#e6b650"],
-                             ["Recorded solar (blue)","#59a9eb"]]){
-  const labelNode=el("span","muted",label);
-  labelNode.style.color=color;
-  legend.append(labelNode);
-}
-pane.append(svg,legend,tip);
-if(!plottedPaths.forecast){
-  pane.append(el("p","muted note",
-    "Projected line unavailable: "+forecast.length+
-    " forecast points received; no connected hourly series. Refresh the solar forecast or check the forecast sensor's today_hourly attribute."));
-}
-pane.append(el("p","muted note","Actual = inverter daily solar counter recorded by Home Assistant. Missing hours are not filled. Forecast = Open-Meteo projected hourly production, which may change as weather forecasts refresh."));
+pane.append(svg,tip,el("p","muted note","Actual = inverter daily solar counter recorded by Home Assistant. Missing hours are not filled. Forecast = Open-Meteo projected hourly production, which may change as weather forecasts refresh."));
 if(this.actualError)pane.append(el("p","muted",this.actualError));
 return pane}
 forecast(){
@@ -283,7 +245,7 @@ if(!this.shadowRoot||!this.hassObj)return;
 const focus=this.shadowRoot.activeElement;if(focus?.tagName==="INPUT"&&focus.type==="text")return;
 const style=el("style");style.textContent=css;const app=el("div","app"),head=el("div","head");
 const solar=this.state("pv"),connected=solar&&!["unknown","unavailable"].includes(String(solar.state));
-append(head,el("h2","","SAJ Energy"),el("span",connected?"good":"bad",connected?"● Connected to inverter":"● Monitoring unavailable"),el("span","muted","v0.4.2"));
+append(head,el("h2","","SAJ Energy"),el("span",connected?"good":"bad",connected?"● Connected to inverter":"● Monitoring unavailable"));
 const refresh=el("button","","↻ Refresh");refresh.addEventListener("click",()=>{this.updated=0;this.loadHistory(true)});head.append(refresh);
 append(app,head,this.live(),this.history(),this.forecast(),this.forecastChart(),this.guide());this.shadowRoot.replaceChildren(style,app)}
 }
