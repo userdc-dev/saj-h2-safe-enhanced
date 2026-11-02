@@ -4,6 +4,18 @@ A clean, **read-only**, self-contained Home Assistant integration for compatible
 
 **No YAML editing. No extra dashboard cards to download. No other repository required. No inverter writes.**
 
+## Add to Home Assistant — easiest method
+
+[![Open SAJ H2 Safe Enhanced in Home Assistant](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=userdc-dev&repository=saj-h2-safe-enhanced&category=integration)
+
+**Click the button** to open **SAJ H2 Safe Enhanced** in HACS / the Home Assistant Marketplace on your own Home Assistant instance. <https://my.home-assistant.io> helps you choose your instance; it does not need your local IP in the GitHub link.
+
+1. Select your Home Assistant instance and approve opening the repository. For an unlisted integration, accept the prompt to add it as a **custom integration repository**.
+2. Choose **Download / Install**, then **restart Home Assistant**.
+3. Open **Settings → Devices & services → Add integration → SAJ H2 Safe Monitor**. Inverter discovery runs during setup (manual IP entry remains available); the **SAJ Energy** dashboard is then added automatically.
+
+**Requires HACS or Home Assistant Marketplace support.** This button opens the installation flow; it cannot silently install/restart your server in one click. If the button does not open a repository, use the Docker/Linux command below instead. No YAML configuration is needed.
+
 ## What the dashboard shows
 
 | Section | Purpose |
@@ -48,9 +60,9 @@ The installer copies only `custom_components/saj_h2_safe`. It does **not** remov
 
 **If you already configured SAJ H2 Safe Monitor**, updating the code preserves your integration and adds the new dashboard. Your existing entity IDs stay intact.
 
-### HACS
+### HACS / Marketplace
 
-Add this repository as a **custom integration repository**, download **SAJ H2 Safe Enhanced**, restart Home Assistant and follow the same Add integration step. HACS support is supplied by root `hacs.json` and a valid custom integration package; no separate monitor repository is needed.
+Use the **Add to Home Assistant** button at the top of this page (preferred). It opens this exact custom integration repository for installation; no need to copy the GitHub URL manually. If the link is unsupported in your Home Assistant environment, add `https://github.com/userdc-dev/saj-h2-safe-enhanced` manually as a custom **Integration** repository in HACS, download it, restart, then add **SAJ H2 Safe Monitor** in Devices & services.
 
 **Solar layout & battery settings (no YAML):** Open **Settings → Devices & services → SAJ H2 Safe Monitor → Configure**. Edit the three panel groups (count, watts, compass azimuth and tilt), combined system efficiency, nominal battery capacity and live update interval. The supplied 9/15/6 panel layout is an example and must be reviewed for your own installation. Zero panels disables an unused group; at least one group must be active. Changing physical solar layout resets old learned correction factors so inaccurate calibration cannot carry over.
 
