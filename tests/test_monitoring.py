@@ -72,8 +72,12 @@ class MonitoringTests(unittest.TestCase):
             self.assertNotIn(forbidden,raw)
             self.assertNotIn(forbidden,flow)
         for key in ("battery_soc","total_pv_power","home_load_power",
-                    "battery_power","grid_power","solar_today","battery_charge"):
+                    "battery_power","grid_power","battery_charge"):
             self.assertIn(key,const)
+        mappings={}
+        exec(compile(const,str(COMP/"const.py"),"exec"),mappings)
+        self.assertIn("solar_today",mappings["ENERGY_KEYS"])
+        self.assertIn("battery_charge_today",mappings["ENERGY_KEYS"])
         for key in ("grid_energy_imported_estimated","grid_energy_exported_estimated",
                     "grid_imported_today_estimated","grid_power_signed_import_export"):
             self.assertIn(key,sensor)
