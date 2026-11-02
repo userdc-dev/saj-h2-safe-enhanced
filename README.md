@@ -1,108 +1,74 @@
-# SAJ H2 Safe Enhanced v0.3.0 — Experimental, read-only
+# SAJ H2 Safe Enhanced
 
-> **Continuing this project in a new chat?** Read [PROJECT_HANDOFF.md](PROJECT_HANDOFF.md) first. It records installed-vs-GitHub status, device mappings, safety restrictions, dashboard preferences, solar forecast assumptions, and next steps.
+A clean, **read-only**, self-contained Home Assistant integration for compatible SAJ H2 inverters. All necessary dashboard files, sensor definitions, forecasting, and the installer are **inside this repository**.
 
-Custom local Modbus integration for Home Assistant, developed using the public register mappings in
-[stanus74/home-assistant-saj-h2-modbus](https://github.com/stanus74/home-assistant-saj-h2-modbus) and
-actual H2 data from the device owner's SAJ app.
+**No YAML editing. No extra dashboard cards to download. No other repository required. No inverter writes.**
 
+## What the dashboard shows
 
-## Experimental solar forecast (v0.3.0)
+| Section | Purpose |
+|---|---|
+| **Live Energy** | Solar, house, battery, grid and forecast; SOC bar; actual watts and today's accumulated kWh |
+| **Historic Data** | Hoverable signed kW graph with **10 minutes**, 6/12/24/48 hours and 7-day intervals; solar/house/battery/grid toggles and actual sample timestamps |
+| **Solar Forecast** | Today, remaining, tomorrow, next week; expandable hoverable hourly and seven-day charts; **actual vs projected cumulative kWh** with mouse/touch/keyboard inspection |
+| **Home Assistant Energy · Sensor IDs & Copy** | Compact responsive Grid, Solar, Battery, Home sensor guide. Shows the exact live entity IDs with copy buttons |
 
-The new Solar Forecast tab uses Home Assistant's configured home coordinates and
-[Open-Meteo](https://open-meteo.com/) tilted irradiance. It projects generation from
-the same three panel groups as SolarCast: 9 at 29°, 15 at 27°, and 6 at 299°, 440 W per panel,
-25° tilt. **Confirm these group details match the actual installation before relying on estimates.**
+The dashboard is created automatically under **SAJ Energy** when the integration is configured. Its frontend is bundled and registered automatically. It does not modify or reset user-edited dashboards.
 
-The forecast represents **total PV-side energy**. The SAJ H2's **10 kW AC output
-rating is NOT a cap on simultaneous PV input when DC battery charging can consume
-additional generation**. The battery charge-side example of 10 kW is separate and
-does not imply the inverter can always route 20 kW simultaneously: MPPT limits,
-firmware, temperature, state of charge, and operating constraints matter.
-The model does not forecast AC delivery or battery charge power separately.
+## One-command installation (Home Assistant Docker/Linux)
 
-Hourly irradiance is fetched once per hour. Inverter power measurements every ~10 seconds
-inform a conservative, persisted hour-of-day correction after sufficiently complete,
-clear-sky measured hours. The correction is intentionally bounded (0.65–1.15).
-Weather forecast error, partial shadow, export limitation and curtailment cannot be
-separated reliably from a single low PV reading; high SOC and cloudy intervals are
-excluded from self-correction. Do not interpret learning factors as definitive
-diagnoses of trees/roof obstructions or export curtailment. The first few days are
-provisional and the model does not promise perfect forecast accuracy.
-
-**Privacy:** Enabling forecast retrieval sends the Home Assistant site's latitude
-and longitude to Open-Meteo. No solar or battery Modbus register writes are introduced.
-A failed weather request must not prevent local SAJ sensor monitoring.
-
-**Dashboard:** replace the YAML with
-[`dashboards/saj-energy.yaml`](dashboards/saj-energy.yaml) after updating the
-custom integration and restarting Home Assistant to add the Solar Forecast tab.
-
-## Current features
-
-- **Live:** total solar (PV1 + PV2 + PV3), home consumption, battery SOC, battery power, battery activity, and grid power.
-- **Battery:** operating mode (register 0x3647, with unknown codes labelled), nominal-capacity-derived stored energy, voltage, current, temperature.
-- **Grid:** raw signed power; separate positive/negative sensors labelled **direction unverified** until a non-zero grid-flow comparison.
-- **Energy:** solar, home, battery charge/discharge, plus two SAJ-named grid counter types; today, month, year and lifetime in kWh.
-- **Week:** built-in Home Assistant statistics-graph uses weekly changes to the lifetime counters. Optional weekly utility-meter examples are in `examples/`.
-- **Dashboard:** `dashboards/saj-energy.yaml`, using only built-in HA cards (no HACS UI dependency).
-
-## Safety and accuracy
-
-- No write functions, numbers, switches, buttons, or inverter-modifying services.
-- Modbus function 03 reads only. Socket timeout 5 seconds, retry count zero, default live polling 10 seconds; energy totals and mode every 60 seconds.
-- Bad data is rejected; auxiliary blocks may show unavailable without disabling the core live sensors.
-- Battery raw SOC 4300 was confirmed as 43.00%. Three PV inputs were confirmed by comparing 962 W to 978 W in the app.
-- The register `0x40BF` gave 16.59 kWh solar today, close to the official app's earlier 16.38 kWh.
-- `0x40DF` gave 24.12 kWh house consumption (needs app verification).
-- App operating mode `0` is labelled Self-consumption based on the upstream control mapping and observation; other mappings need on-device validation.
-- **Estimated battery energy** is SOC × **40.00 kWh**, based on the installed battery capacity reported by the owner's SAJ app. It is NOT a BMS-measured usable-capacity value or a guarantee of energy available above reserve. To change the nominal capacity, set `battery_capacity_kwh` in integration entry data/options; UI editing is a future feature.
-- **Grid import/export polarity and sell/feed-in counters are not confirmed.** Do not use those derived entities for billing, automation, or Energy Dashboard billing calculations until verified.
-- Existing third-party inverter integrations or SAJ cloud controls are not disabled by this read-only integration.
-
-## Operating-mode safety policy (this installation)
-
-The owner's inverter reports AppMode at `0x3647`:
-- `0` — Self-consumption (display only).
-- `1` — Time-of-use (display only).
-- `2` — Backup (display only; owner reports undesired side effects affecting battery cycling / BMS reporting).
-- `3` — **Off-grid / Passive (ambiguous firmware terminology)**. The owner calls it Off-grid; the upstream implementation calls value 3 Passive. Display only; do not transmit.
-- Unknown values appear explicitly as unknown, not as a guessed mode.
-
-**Never expose commands that set modes 2 or 3** on this installation. In addition, never attempt off-grid or passive transitions through alternative registers. Only consider safe, separately verified controls for modes 0/1 in a later opt-in release. The current branch remains entirely **read-only**, with no device writes.
-
-## Install / update from Kamrui server SSH
+On the computer hosting your Home Assistant Docker container, paste:
 
 ```bash
-cd /home/kamrui/compose-files/homeassistant/config
-curl -fL https://github.com/userdc-dev/saj-h2-safe-enhanced/archive/refs/heads/main.tar.gz -o /tmp/saj-h2-safe-enhanced.tar.gz
-tar -xzf /tmp/saj-h2-safe-enhanced.tar.gz -C /tmp
-cp -a /tmp/saj-h2-safe-enhanced-main/custom_components/saj_h2_safe/. custom_components/saj_h2_safe/
+curl -fL https://raw.githubusercontent.com/userdc-dev/saj-h2-safe-enhanced/main/scripts/install.sh -o /tmp/install-saj-safe.sh &&
+bash /tmp/install-saj-safe.sh &&
 docker restart homeassistant
 ```
 
-**Do not place backups in `custom_components`**: Home Assistant tries to load every subfolder as an integration.
-
-The initial configuration is SAJ device IP, port 502, original saved 60-second poll setting is overridden by the new live 10-second polling default; optional `live_scan_interval` may be set to 5–60 seconds. Automatic discovery and DHCP failover are not implemented; reserve its IP in your router.
-
-## Dashboard setup
-
-Settings → Dashboards → Add Dashboard → New dashboard, then open its raw YAML editor and paste
-[`dashboards/saj-energy.yaml`](dashboards/saj-energy.yaml). Some entity IDs may need adjustment
-if you already renamed devices or entities. The dashboard is a starter interface, not a custom frontend card.
-
-The "Energy" tab includes today/month/year totals and weekly/monthly history bar charts.
-**Weekly graphs appear only after Home Assistant has recorded sufficient historical statistics**.
-For a weekly number that resets each week, merge [weekly utility-meter helpers](examples/weekly-utility-meters.yaml)
-into your Home Assistant configuration, then restart; those weekly counters start when created
-and do not retroactively reconstruct history.
-
-## Testing
+The installer detects the host directory mounted at **/config** for a Docker container named `homeassistant`. If your container has another name or your setup is different, supply your own Home Assistant **configuration directory** (not the container's internal `/config`):
 
 ```bash
-python3 tests/test_decode.py
-python3 -m compileall -q custom_components/saj_h2_safe
+bash /tmp/install-saj-safe.sh /path/to/homeassistant/config
 ```
 
-Tests check static decoder correctness, not complete compatibility or behaviour with every H2/firmware.
-This is not manufacturer-supported and should not power safety-critical automations.
+Example for one particular installation (replace for your own system):
+
+```bash
+bash /tmp/install-saj-safe.sh /home/kamrui/compose-files/homeassistant/config &&
+docker restart homeassistant
+```
+
+The installer copies only `custom_components/saj_h2_safe`. It does **not** remove your existing config entries, entity registry, Home Assistant data, TOU settings, automations or other custom integrations.
+
+### Home Assistant setup (no YAML)
+
+1. Go to **Settings → Devices & services → Add integration → SAJ H2 Safe Monitor**.
+2. The setup flow tries to locate a **verified SAJ H2 inverter** on the reachable local /24 network and reuses known compatible Home Assistant connection addresses when possible. If one verified inverter is found, it can configure that device automatically. If discovery cannot reach your network (especially in a Docker bridge), enter its local IP instead.
+3. Open the new **SAJ Energy** dashboard from the sidebar. The four sections are ready without manually editing dashboard YAML or JavaScript resources.
+
+**If you already configured SAJ H2 Safe Monitor**, updating the code preserves your integration and adds the new dashboard. Your existing entity IDs stay intact.
+
+### HACS
+
+Add this repository as a **custom integration repository**, download **SAJ H2 Safe Enhanced**, restart Home Assistant and follow the same Add integration step. HACS support is supplied by root `hacs.json` and a valid custom integration package; no separate monitor repository is needed.
+
+## Accuracy and safety
+
+This is a **read-only Modbus function 03 integration**. It does not expose inverter control, charging/discharging commands, operating-mode switches or TOU writes.
+
+- Battery SOC, solar generation, house usage and battery charged/discharged day totals come from the local inverter.
+- Grid direction (positive import / negative export) still requires verification with a real utility meter. Estimated import/export kWh only count periods for which power readings were recorded; they are **not certified utility meter data**.
+- Actual solar on the cumulative chart is the inverter's daily solar counter recorded by Home Assistant Recorder; gaps are not synthesized.
+- The solar forecast uses Open-Meteo tilted irradiance with conservative clear-sky learning. Your Home Assistant configured coordinates are sent to Open-Meteo for weather forecasts; solar usage data are not uploaded.
+- Home Assistant retains the existing sensor unique IDs. A handful of new read-only grid energy/power entities are additive, not replacements.
+- If Home Assistant Recorder contains no history, the graph displays missing information rather than inventing values.
+
+## Maintenance and development
+
+- [Developer handover](PROJECT_HANDOFF.md)
+- [Tests and verification](.github/workflows/validate.yml)
+- [One-command installer](scripts/install.sh)
+
+Python decoding and solar-model tests, the standalone JavaScript syntax check and a no-write policy run in GitHub Actions. Passing offline tests does **not** mean compatibility with every SAJ firmware or verification of grid polarity on your property.
+
+**Recommended first test:** Confirm the Live Energy solar and battery values match the SAJ app; open Historic Data → 10 minutes; move the cursor across the chart and check sample timestamps; compare real daily kWh with the inverter app; then verify grid polarity before using the Energy dashboard for bill calculations.
