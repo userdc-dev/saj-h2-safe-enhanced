@@ -121,6 +121,11 @@ def learn_factor(previous, observed_kwh, expected_kwh, cloud, coverage_seconds,
         return None
     if battery_soc_peak is not None and battery_soc_peak >= MIN_LEARNING_SOC_FOR_POSSIBLE_CURTAILMENT:
         return None
-    ratio = max(0.65, min(1.15, observed_kwh / expected_kwh))
+    raw_ratio = observed_kwh / expected_kwh
+    # An extremely low or high reading is more likely clouds, curtailment,
+    # a register issue or intermittent telemetry than a stable panel loss.
+    if not 0.45 <= raw_ratio <= 1.55:
+        return None
+    ratio = max(0.65, min(1.15, raw_ratio))
     previous = max(0.65, min(1.15, float(previous)))
     return round(max(0.65, min(1.15, previous * 0.85 + ratio * 0.15)), 4)
