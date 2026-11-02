@@ -11,6 +11,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check standalone monitoring card JavaScript syntax
+        run: node --check custom_components/saj_h2_safe/frontend/saj-safe-monitor-card.js
+      - name: Check shell installer syntax
+        run: bash -n scripts/install.sh
       - name: Compile Python files
         run: python -m compileall -q custom_components/saj_h2_safe tests
       - name: Run decoding checks (no inverter required)
