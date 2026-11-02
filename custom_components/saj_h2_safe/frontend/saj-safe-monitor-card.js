@@ -39,7 +39,18 @@ constructor(){super();this.attachShadow({mode:"open"});this.conf={};this.range=6
 setConfig(config){this.conf=config||{};this.render()}
 set hass(h){this.hassObj=h;if(!h)return;if(Date.now()-this.tick>9000){this.tick=Date.now();this.render();if(Date.now()-this.updated>30000)this.loadHistory()}}
 getCardSize(){return 16}
-state(key){return this.hassObj?.states?.[this.conf.entities?.[key]||"sensor.saj_h2_safe_monitor_"+(ids[key]||key)]||null}
+state(key){
+const suffix=ids[key]||key;
+const direct=this.hassObj?.states?.[this.conf.entities?.[key]||
+  "sensor.saj_h2_safe_monitor_"+suffix];
+if(direct)return direct;
+const registry=this.hassObj?.entities||{};
+const match=Object.entries(registry).find(([entityId,meta])=>
+  entityId.startsWith("sensor.")&&meta?.platform==="saj_h2_safe"&&
+  typeof meta.unique_id==="string"&&meta.unique_id.endsWith("_"+suffix)&&
+  this.hassObj?.states?.[entityId]);
+return match?this.hassObj.states[match[0]]:null;
+}
 num(key){const x=this.state(key);if(!x||["unknown","unavailable",""].includes(String(x.state)))return null;const v=Number(x.state);return Number.isFinite(v)?v:null}
 panel(title,subtitle){const p=el("section","panel"),h=el("div","head");append(h,el("h3","",title),el("span","muted",subtitle||""));return append(p,h)}
 live(){
