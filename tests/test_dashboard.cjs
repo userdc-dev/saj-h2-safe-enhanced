@@ -62,6 +62,13 @@ assert.ok(selectors.length);
 assert.equal(selectors[0].children[0].textContent,"10 minutes");
 const svgs=all.filter(x=>x.tagName==="SVG");
 assert.equal(svgs.length,2,"Historic Data and actual/forecast graphs");
+const projectedPaths=[...svgs[1].walk()].filter(n=>
+ n.tagName==="PATH"&&n.attributes.stroke==="#e6b650");
+assert.ok(projectedPaths.length>0,
+ "hourly forecast must draw a yellow SVG line (not isolated invisible points)");
+assert.ok(projectedPaths.some(n=>(n.attributes.d||"").includes("L")),
+ "forecast path must connect successive hourly samples");
+
 for(const svg of svgs){assert.ok(svg.listeners.pointermove);assert.ok(svg.listeners.pointerdown);assert.ok(svg.listeners.keydown)}
 const inputs=all.filter(x=>x.tagName==="INPUT"&&x.readOnly);
 assert.ok(inputs.some(x=>x.value===key("battery_charged_total")));
