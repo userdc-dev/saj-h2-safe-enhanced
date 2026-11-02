@@ -133,7 +133,22 @@ class SajSolarForecastCoordinator(DataUpdateCoordinator):
                     "kwh": round(item["kwh"], 2),
                     "cloud": item["cloud"],
                 })
+        # Whole local day, not the rolling "next 24 hours" list. Needed
+        # for a truthful cumulative forecast versus actual-generation chart.
+        today_hours = []
+        for end in sorted(self.hours):
+            period = datetime.fromtimestamp(
+                end - 1800, timezone.utc).astimezone(ZoneInfo(self.tz))
+            if period.date() != local_time.date():
+                continue
+            item = self.hours[end]
+            today_hours.append({
+                "hour": period.strftime("%H:%M"),
+                "start": end - 3600,
+                "kwh": round(item["kwh"], 4),
+            })
         return {
+            "today_hourly": today_hours,
             "forecast_today": daily[0]["kwh"],
             "forecast_today_outlook": (round(actual + remaining, 2)
                                        if isinstance(actual, (int, float)) else None),
