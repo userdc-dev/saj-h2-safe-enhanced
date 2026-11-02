@@ -24,5 +24,33 @@
     "abort": {
       "already_configured": "This inverter is already configured."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Solar panel and battery settings",
+        "description": "The initial panel layout is an example. Review the panel counts, compass directions, wattage, tilt and efficiency to match YOUR own system. These settings affect read-only monitoring and forecasts, not inverter operation.",
+        "data": {
+          "panel_1_count": "Group 1: Number of panels",
+          "panel_1_watts": "Group 1: Wattage per panel (W)",
+          "panel_1_azimuth": "Group 1: Compass azimuth (degrees)",
+          "panel_1_tilt": "Group 1: Roof tilt (degrees)",
+          "panel_2_count": "Group 2: Number of panels",
+          "panel_2_watts": "Group 2: Wattage per panel (W)",
+          "panel_2_azimuth": "Group 2: Compass azimuth (degrees)",
+          "panel_2_tilt": "Group 2: Roof tilt (degrees)",
+          "panel_3_count": "Group 3: Number of panels",
+          "panel_3_watts": "Group 3: Wattage per panel (W)",
+          "panel_3_azimuth": "Group 3: Compass azimuth (degrees)",
+          "panel_3_tilt": "Group 3: Roof tilt (degrees)",
+          "efficiency_percent": "System efficiency (%)",
+          "battery_capacity_kwh": "Nominal battery capacity (kWh)",
+          "live_scan_interval": "Live update interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "at_least_one_panel": "At least one panel group must contain panels."
+    }
   }
 }
