@@ -145,6 +145,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(async_track_time_interval(hass,persist_grid,timedelta(minutes=2)))
     await async_register_frontend(hass)
     await async_ensure_dashboard(hass)
+    # On HA boot, Lovelace may be initialized after the sensor integration.
+    # Register one safe retry after startup; never reset existing dashboards.
+    if not hass.is_running:
+        from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
+        from homeassistant.core import callback
+
+        @callback
+        def dashboard_after_start(_event):
+            hass.async_create_task(async_ensure_dashboard(hass))
+
+        entry.async_on_unload(
+            hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED,
+                                       dashboard_after_start))
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
