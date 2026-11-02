@@ -16,6 +16,8 @@ jobs:
           node-version: '24'
       - name: Check standalone monitoring card JavaScript syntax
         run: node --check custom_components/saj_h2_safe/frontend/saj-safe-monitor-card.js
+      - name: Run standalone dashboard interaction smoke
+        run: node tests/test_dashboard.cjs
       - name: Check shell installer syntax
         run: bash -n scripts/install.sh
       - name: Compile Python files
