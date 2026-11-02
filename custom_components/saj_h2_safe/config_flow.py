@@ -13,6 +13,10 @@ from .discovery import discover, valid_saj_host, known_hosts
 class SajSafeFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION=1
 
+    @staticmethod
+    def async_get_options_flow(config_entry):
+        return SajSafeOptionsFlow()
+
     async def async_step_user(self,user_input=None):
         """Offer verified automatic candidates first; always allow host fallback."""
         if user_input is not None:
@@ -68,4 +72,44 @@ class SajSafeFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(
             title="SAJ H2 Safe ("+host+")",
             data={"host":host,"port":DEFAULT_PORT},
+        )
+
+
+
+class SajSafeOptionsFlow(config_entries.OptionsFlow):
+    """All forecast/system settings are editable in the native HA UI.
+
+    Dashboard remains monitoring-only with no YAML or inverter writes.
+    """
+    async def async_step_init(self,user_input=None):
+        if user_input is not None:
+            # Basic physical bounds are validated by vol.Schema below.
+            return self.async_create_entry(title="",data=user_input)
+        from .solar_model import PANEL_GROUPS
+        options=self.config_entry.options
+        schema={}
+        for i,defaults in enumerate(PANEL_GROUPS,1):
+            n,w,az,tilt=defaults
+            for key,value,upper in (
+                ("count",n,100),("watts",w,800),
+                ("azimuth",az,360),("tilt",tilt,90)):
+                name=f"panel_{i}_{key}"
+                # Counts 0 allowed for unused panel orientations.
+                lower=0 if key=="count" else (1 if key=="watts" else 0)
+                schema[vol.Required(name,default=options.get(name,value))]=vol.All(
+                    vol.Coerce(int),vol.Range(min=lower,max=upper))
+        schema[vol.Required(
+            "efficiency_percent",default=options.get("efficiency_percent",87)
+        )]=vol.All(vol.Coerce(int),vol.Range(min=1,max=100))
+        schema[vol.Required(
+            "battery_capacity_kwh",default=options.get("battery_capacity_kwh",40.0)
+        )]=vol.All(vol.Coerce(float),vol.Range(min=1,max=100))
+        schema[vol.Required(
+            "live_scan_interval",default=options.get("live_scan_interval",10)
+        )]=vol.All(vol.Coerce(int),vol.Range(min=5,max=60))
+        return self.async_show_form(
+            step_id="init",data_schema=vol.Schema(schema),
+            description_placeholders={
+                "notice":"Review example panel counts and orientations for your actual installation. Read-only configuration."
+            }
         )
