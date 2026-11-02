@@ -4,7 +4,7 @@ A clean, **read-only**, self-contained Home Assistant integration for compatible
 
 **No YAML editing. No extra dashboard cards to download. No other repository required. No inverter writes.**
 
-**Latest release: v0.4.1** — Fixed the missing yellow forecast line in **Actual vs projected · Today**, while preserving actual-generation gaps and mouse-hover readings.
+**Latest release: v0.4.2** — Improved the yellow forecast line, added a visible version indicator, and switched to persistent Lovelace resource registration to address mobile card-loading errors. Existing sensors and dashboards are preserved.
 
 ## Add to Home Assistant — easiest method
 
