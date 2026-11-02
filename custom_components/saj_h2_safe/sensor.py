@@ -103,6 +103,7 @@ class SajForecastSensor(CoordinatorEntity, SensorEntity):
         return {
             "daily": data.get("daily", []),
             "hourly": data.get("hourly", []),
+            "today_hourly": data.get("today_hourly", []),
             "learned_factors": data.get("hourly_factors", {}),
             "model": data.get("forecast_model", ""),
             "limitation": data.get("note", ""),
