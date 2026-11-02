@@ -1,5 +1,5 @@
 """SAJ H2 Safe Enhanced — read-only Modbus poller."""
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 import asyncio
 import inspect
 import logging
@@ -9,6 +9,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from pymodbus.client import AsyncModbusTcpClient
 from .solar_forecast import SajSolarForecastCoordinator
+from .grid_totals import GridTotals
+from .frontend_setup import async_register_frontend, async_ensure_dashboard
 from .const import (
     DEFAULT_SCAN_INTERVAL, DEFAULT_BATTERY_CAPACITY_KWH, SENSORS,
     ENERGY_KEYS, MODE_LABELS, decode, decode_energy, derived_values,
@@ -108,6 +110,8 @@ class SajSafeCoordinator(DataUpdateCoordinator):
                 for key in ENERGY_KEYS:
                     parsed[key] = self._counter_cache.get(key)
 
+                self.grid_totals.sample(datetime.now(timezone.utc),parsed.get('grid_power'))
+                self.grid_totals.populate(parsed)
                 self.failures = 0
                 return parsed
             except UpdateFailed:
@@ -121,6 +125,8 @@ class SajSafeCoordinator(DataUpdateCoordinator):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = SajSafeCoordinator(hass, entry)
+    coordinator.grid_totals = GridTotals(hass,entry)
+    await coordinator.grid_totals.load()
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
     # Forecast availability never blocks the working local Modbus integration.
@@ -133,7 +139,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.warning("Solar forecast initial refresh failed (live readings still work): %s", exc)
     entry.async_on_unload(coordinator.async_add_listener(forecast.on_live_update))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    from homeassistant.helpers.event import async_track_time_interval
+    async def persist_grid(_now=None):
+        await coordinator.grid_totals.save()
+    entry.async_on_unload(async_track_time_interval(hass,persist_grid,timedelta(minutes=2)))
+    await async_register_frontend(hass)
+    await async_ensure_dashboard(hass)
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    if hasattr(entry.runtime_data,"grid_totals"):
+        await entry.runtime_data.grid_totals.save()
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
