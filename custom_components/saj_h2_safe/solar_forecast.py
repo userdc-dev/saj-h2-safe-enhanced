@@ -62,6 +62,16 @@ class SajSolarForecastCoordinator(DataUpdateCoordinator):
                 if str(k).isdigit() and 0 <= int(k) <= 23 and 0.65 <= float(v) <= 1.15
             }
             self.learned_hours = max(0, int(saved.get("learned_hours", 0)))
+            current=str(self._model_settings())
+            previous=saved.get("model_signature")
+            if (previous and previous!=current) or (
+                previous is None and self._model_settings()!=
+                (tuple(PANEL_GROUPS),SYSTEM_EFFICIENCY)
+            ):
+                # Old calibration is invalid if panels, orientation or
+                # efficiency changed. Never reapply old learned multipliers.
+                self.factors={}
+                self.learned_hours=0
         except (ValueError, TypeError, KeyError) as exc:
             _LOGGER.warning("Solar learning data invalid; starting fresh: %s", exc)
             self.factors = {}
@@ -262,5 +272,6 @@ class SajSolarForecastCoordinator(DataUpdateCoordinator):
         self.hass.async_create_task(
             self.store.async_save({
                 "factors": self.factors, "learned_hours": self.learned_hours,
+                "model_signature":str(self._model_settings()),
             })
         )
