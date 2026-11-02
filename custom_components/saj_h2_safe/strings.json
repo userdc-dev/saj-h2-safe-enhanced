@@ -1,0 +1,28 @@
+{
+  "title": "SAJ H2 Safe Monitor",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Choose your SAJ H2 inverter",
+        "description": "Verified local inverters are listed below. You can enter the IP manually if needed.",
+        "data": {
+          "choice": "Inverter"
+        }
+      },
+      "manual": {
+        "title": "Connect to your SAJ H2 inverter",
+        "description": "Enter its local IPv4 address. Only read-only Modbus requests are sent.",
+        "data": {
+          "host": "Inverter local IP address"
+        }
+      }
+    },
+    "error": {
+      "invalid_host": "Enter a valid private IPv4 address.",
+      "cannot_connect": "Could not verify the inverter at this address. Check your network and Modbus TCP connection."
+    },
+    "abort": {
+      "already_configured": "This inverter is already configured."
+    }
+  }
+}
