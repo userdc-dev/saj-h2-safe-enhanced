@@ -58,7 +58,7 @@ class SajSafeFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="manual",
             data_schema=vol.Schema({
-                vol.Required("host",default="172.16.1.4"):str,
+                vol.Required("host",default=(known_hosts(self.hass)[0] if known_hosts(self.hass) else "")):str,
             }),errors=errors
         )
 
