@@ -181,10 +181,16 @@ shape("line",{x1:L,x2:R,y1:Y,y2:Y,stroke:"currentColor","stroke-opacity":.14});
 shape("text",{x:L-8,y:Y+4,fill:"currentColor","font-size":12,"text-anchor":"end"},v.toFixed(0))}
 for(let h=0;h<=24;h+=4){shape("text",{x:x(start+h*3600000),y:266,fill:"currentColor","font-size":12,"text-anchor":h===0?"start":h===24?"end":"middle"},String(h).padStart(2,"0")+":00")}
 shape("text",{x:13,y:13,fill:"currentColor","font-size":12},"kWh");
-for(const [data,color] of [[forecast,"#e6b650"],[actual,"#59a9eb"]]){
+// Weather projections arrive as hourly buckets, unlike much denser HA
+// Recorder samples. A universal 45-minute gap threshold made EVERY hourly
+// forecast sample a disconnected single point, hiding the yellow line.
+for(const [data,color,maxGap] of [
+  [forecast,"#e6b650",90*60000],
+  [actual,"#59a9eb",45*60000]
+]){
 let segment=[],previous=null;
 const flush=()=>{if(segment.length>1)shape("path",{d:segment.map((q,i)=>(i?"L":"M")+x(q.t).toFixed(1)+","+y(q.v).toFixed(1)).join(" "),fill:"none",stroke:color,"stroke-width":2.6});segment=[]};
-for(const q of data){if(q.t<start||q.t>start+86400000)continue;if(previous!==null&&q.t-previous>45*60000)flush();segment.push(q);previous=q.t}flush()}
+for(const q of data){if(q.t<start||q.t>start+86400000)continue;if(previous!==null&&q.t-previous>maxGap)flush();segment.push(q);previous=q.t}flush()}
 const cursor=shape("line",{x1:L,x2:L,y1:T,y2:B,stroke:"currentColor","stroke-dasharray":"4 4",visibility:"hidden"});
 shape("rect",{x:L,y:T,width:R-L,height:B-T,fill:"transparent","pointer-events":"all"});
 const tip=el("div","tooltip","Hover or tap for actual and predicted energy; blue is recorded, yellow is forecast.");
