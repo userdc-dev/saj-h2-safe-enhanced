@@ -4,6 +4,16 @@
 **Repository:** https://github.com/userdc-dev/saj-h2-safe-enhanced  
 **Scope:** A minimal, independent, read-only Home Assistant integration. No manual YAML or additional repositories are required.
 
+## Rollback to original v0.4.0 dashboard (2026-11-02)
+
+**User report:** v0.4.1 and v0.4.2 displayed "Configuration error" across Windows and Android. The user explicitly requested reverting to the initial clean working edition instead of further experimentation.
+
+**Actions:** Restored the **exact original v0.4.0** dashboard frontend file and manifest (`version: 0.4.0`); reinstated original frontend card registration at `/saj-h2-safe/v040/saj-safe-monitor-card.js` using `add_extra_js_url`. Restored the original v0.4.0 frontend smoke test and removed the 0.4.1/0.4.2 forecast-line enhancements.
+
+**Compatibility cleanup:** v0.4.2 created a persisted Lovelace module resource, so merely replacing JS can leave the faulty module loading. `async_cleanup_newer_card_resource()` runs during integration registration and retries after HA startup; it removes ONLY the exact `/saj-h2-safe/v041/saj-safe-monitor-card.js` and `/saj-h2-safe/v042/saj-safe-monitor-card.js` resource records from storage. It never alters other Lovelace resources, user dashboards, stored entity names, HA configuration entries or existing power readings. Keep this targeted cleanup while supporting rollback installs. Do not reintroduce an automatic Lovelace resource for this version.
+
+**Caveat:** The v0.4.0 yellow predicted line was not fully drawn in the user's original screenshot, but the dashboard displayed actual-generation data and remained otherwise functional in Windows. Prioritize a working dashboard over a speculative forecast graph fix. Browser/app reload still required after reinstall. Tests do not establish all Home Assistant frontend contexts are compatible.
+
 ## Core requirements — do not regress
 
 The user explicitly requested the Safe Enhanced repository be rebuilt around **only four clean monitoring sections**, matching the appearance and usability of their working control dashboard:
