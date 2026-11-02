@@ -1,8 +1,17 @@
-# SAJ H2 Safe Enhanced — Developer handover (v0.4.1)
+# SAJ H2 Safe Enhanced — Developer handover (v0.4.2)
 
 **Last updated:** 2026-11-02  
 **Repository:** https://github.com/userdc-dev/saj-h2-safe-enhanced  
 **Scope:** A minimal, independent, read-only Home Assistant integration. No manual YAML or additional repositories are required.
+
+## v0.4.2 — Windows yellow-forecast line and mobile Configuration error (2026-11-02)
+
+**Owner reports:** The projected forecast still missing after v0.4.1 on Windows, while the Home Assistant mobile app says "Configuration error". The former may be browser caching, and the latter is consistent with custom-card registration race; do not claim the exact phone error is diagnosed without logs.
+
+**Fix:**
+- `frontend_setup.async_ensure_card_resource()` now creates or updates the card as a Lovelace **module** resource, not `add_extra_js_url` in storage mode. The early global-script path can register before HA's scoped registry polyfill and silently lose a custom element, especially on fresh/mobile loads. Resource collection is **explicitly loaded via `async_get_info()` before inspecting/updating entries** to avoid wiping unrelated resources. Only `/saj-h2-safe/*/saj-safe-monitor-card.js` is matched; no other resources modified. YAML resource mode uses global-script fallback without requiring user YAML edits. Startup retry handles Lovelace initialization order. URL cache-busted to `/saj-h2-safe/v042/saj-safe-monitor-card.js`.
+- `forecastChart()` renders explicit SVG yellow hourly polylines (3.2px) and the blue actual Recorder series separately, retaining actual gap handling. A visible colour legend and clear missing-point diagnostic are included. The header displays `v0.4.2` to verify that clients loaded the new JS; if missing, check cache/Resource loading rather than asserting forecast data absent.
+- Existing user dashboards/settings and control operations must not be deleted. Check HA app/dashboard Resources if any UI issue persists; retrieve exact error logs before claiming a full device fix.
 
 ## v0.4.1 — Missing projected solar line (2026-11-02)
 
