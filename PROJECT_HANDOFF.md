@@ -1,8 +1,12 @@
-# SAJ H2 Safe Enhanced — Developer handover (v0.4.0)
+# SAJ H2 Safe Enhanced — Developer handover (v0.4.1)
 
 **Last updated:** 2026-11-02  
 **Repository:** https://github.com/userdc-dev/saj-h2-safe-enhanced  
 **Scope:** A minimal, independent, read-only Home Assistant integration. No manual YAML or additional repositories are required.
+
+## v0.4.1 — Missing projected solar line (2026-11-02)
+
+A field screenshot showed the actual (blue) cumulative solar series but no forecast (yellow) line even though hover revealed valid forecast kWh. Root cause: `forecastChart()` applied a **45-minute gap cutoff to BOTH series**. The expected forecast is one data point per hour, so each yellow point was disconnected and the SVG generator drew no path for singletons. **Fixed:** the projected series uses 90 minutes between adjacent hourly forecast buckets; actual Home Assistant Recorder samples retain the shorter 45-minute gap limit. Added a genuine frontend smoke assertion that the projected SVG includes a yellow path connecting at least two forecast points. Cache-busted the frontend URL to `/saj-h2-safe/v041/saj-safe-monitor-card.js` and incremented manifest to v0.4.1. Keep forecast hourly spacing distinct from actual Recorder data for future charts; don't synthesize missing readings.
 
 ## Core requirements — do not regress
 
