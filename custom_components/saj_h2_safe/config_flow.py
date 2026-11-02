@@ -82,9 +82,11 @@ class SajSafeOptionsFlow(config_entries.OptionsFlow):
     Dashboard remains monitoring-only with no YAML or inverter writes.
     """
     async def async_step_init(self,user_input=None):
+        errors={}
         if user_input is not None:
-            # Basic physical bounds are validated by vol.Schema below.
-            return self.async_create_entry(title="",data=user_input)
+            if any(int(user_input.get(f"panel_{i}_count",0))>0 for i in (1,2,3)):
+                return self.async_create_entry(title="",data=user_input)
+            errors["base"]="at_least_one_panel"
         from .solar_model import PANEL_GROUPS
         options=self.config_entry.options
         schema={}
@@ -108,7 +110,7 @@ class SajSafeOptionsFlow(config_entries.OptionsFlow):
             "live_scan_interval",default=options.get("live_scan_interval",10)
         )]=vol.All(vol.Coerce(int),vol.Range(min=5,max=60))
         return self.async_show_form(
-            step_id="init",data_schema=vol.Schema(schema),
+            step_id="init",data_schema=vol.Schema(schema),errors=errors,
             description_placeholders={
                 "notice":"Review example panel counts and orientations for your actual installation. Read-only configuration."
             }
