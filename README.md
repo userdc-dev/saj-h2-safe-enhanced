@@ -4,6 +4,8 @@ A clean, **read-only**, self-contained Home Assistant integration for compatible
 
 **No YAML editing. No extra dashboard cards to download. No other repository required. No inverter writes.**
 
+**Latest release: v0.4.1** — Fixed the missing yellow forecast line in **Actual vs projected · Today**, while preserving actual-generation gaps and mouse-hover readings.
+
 ## Add to Home Assistant — easiest method
 
 [![Open SAJ H2 Safe Enhanced in Home Assistant](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=userdc-dev&repository=saj-h2-safe-enhanced&category=integration)
