@@ -66,6 +66,27 @@ class SajSolarForecastCoordinator(DataUpdateCoordinator):
             _LOGGER.warning("Solar learning data invalid; starting fresh: %s", exc)
             self.factors = {}
 
+    def _model_settings(self):
+        """Native HA OptionsFlow panel settings, with safe defaults."""
+        opts=self.entry.options
+        groups=[]
+        for i,defaults in enumerate(PANEL_GROUPS,1):
+            count,watts,az,tilt=defaults
+            count=int(opts.get(f"panel_{i}_count",count))
+            if count:
+                groups.append((
+                    count,
+                    int(opts.get(f"panel_{i}_watts",watts)),
+                    int(opts.get(f"panel_{i}_azimuth",az)),
+                    int(opts.get(f"panel_{i}_tilt",tilt)),
+                ))
+        if not groups:
+            # Keep the original weather model intact until an installation
+            # has at least one nonempty panel group.
+            groups=list(PANEL_GROUPS)
+        efficiency=float(opts.get("efficiency_percent",87))/100
+        return tuple(groups),efficiency
+
     async def _get_group_forecast(self, session, group):
         count, watt, azimuth, tilt = group
         params = {
@@ -92,12 +113,14 @@ class SajSolarForecastCoordinator(DataUpdateCoordinator):
         session = async_get_clientsession(self.hass)
         # Three independent tilted irradiance calls, one per panel orientation.
         try:
+            groups,efficiency=self._model_settings()
             series = await asyncio.gather(
-                *(self._get_group_forecast(session, g) for g in PANEL_GROUPS)
+                *(self._get_group_forecast(session, g) for g in groups)
             )
             new_hours = hour_records(
-                series, hourly_factors=self.factors, timezone_name=self.tz,
-                efficiency=SYSTEM_EFFICIENCY,
+                series,groups=groups,
+                hourly_factors=self.factors, timezone_name=self.tz,
+                efficiency=efficiency,
             )
             if len(new_hours) < 24:
                 raise ValueError("Weather forecast has fewer than 24 valid hourly intervals")
@@ -171,6 +194,8 @@ class SajSolarForecastCoordinator(DataUpdateCoordinator):
             "hourly_factors": dict(self.factors),
             "latitude_source": "Home Assistant home coordinates",
             "forecast_model": "PV-side forecast (not capped at 10 kW AC) + clear-sky corrections",
+            "panel_groups":list(self._model_settings()[0]),
+            "system_efficiency_percent":round(100*self._model_settings()[1],1),
             "note": "10 kW AC limit does not cap PV-side output during DC battery charging. Low output alone cannot distinguish shading, weather error or curtailment.",
         }
 
