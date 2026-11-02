@@ -52,6 +52,8 @@ The installer copies only `custom_components/saj_h2_safe`. It does **not** remov
 
 Add this repository as a **custom integration repository**, download **SAJ H2 Safe Enhanced**, restart Home Assistant and follow the same Add integration step. HACS support is supplied by root `hacs.json` and a valid custom integration package; no separate monitor repository is needed.
 
+**Solar layout & battery settings (no YAML):** Open **Settings → Devices & services → SAJ H2 Safe Monitor → Configure**. Edit the three panel groups (count, watts, compass azimuth and tilt), combined system efficiency, nominal battery capacity and live update interval. The supplied 9/15/6 panel layout is an example and must be reviewed for your own installation. Zero panels disables an unused group; at least one group must be active. Changing physical solar layout resets old learned correction factors so inaccurate calibration cannot carry over.
+
 ## Accuracy and safety
 
 This is a **read-only Modbus function 03 integration**. It does not expose inverter control, charging/discharging commands, operating-mode switches or TOU writes.
