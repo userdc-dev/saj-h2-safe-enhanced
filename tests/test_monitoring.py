@@ -61,6 +61,20 @@ class MonitoringTests(unittest.TestCase):
             self.assertEqual(data["grid_energy_exported_estimated"],round(g.export_kwh,5))
         asyncio.run(task())
 
+    def test_rollback_restores_original_card_and_cleans_only_our_resources(self):
+        setup=(COMP/"frontend_setup.py").read_text()
+        js=(COMP/"frontend"/"saj-safe-monitor-card.js").read_text()
+        manifest=(COMP/"manifest.json").read_text()
+        self.assertIn('"/saj-h2-safe/v040/saj-safe-monitor-card.js"',setup)
+        self.assertIn('add_extra_js_url(hass, URL)',setup)
+        self.assertIn('async_cleanup_newer_card_resource',setup)
+        self.assertIn('"/saj-h2-safe/v041/saj-safe-monitor-card.js"',setup)
+        self.assertIn('"/saj-h2-safe/v042/saj-safe-monitor-card.js"',setup)
+        self.assertIn('resource.get("url") in old_urls',setup)
+        self.assertNotIn('await resources.async_delete_item(resource["id"])',setup.split("for resource in list(resources.async_items()):")[0])
+        self.assertIn('"version": "0.4.0"',manifest)
+        self.assertNotIn("v0.4.2",js)
+
     def test_readonly_and_existing_sensor_contract(self):
         raw=(COMP/"__init__.py").read_text()
         sensor=(COMP/"sensor.py").read_text()
