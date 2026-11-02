@@ -35,7 +35,7 @@ const css=[
 ".note{font-size:11px;line-height:1.6;margin:12px 0 0}@media(max-width:690px){.app{padding:6px}.panel{padding:11px}.meters,.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.day{grid-template-columns:70px 1fr 75px}}"
 ].join("\n");
 class Monitor extends HTMLElement{
-constructor(){super();this.attachShadow({mode:"open"});this.conf={};this.range=6;this.show={pv:true,home:true,battery:true,grid:true};this.historyData={};this.updated=0;this.pending=false;this.error="";this.tick=0;this.expanded={days:false,hours:false,guide:false};}
+constructor(){super();this.attachShadow({mode:"open"});this.conf={};this.range=6;this.show={pv:true,home:true,battery:true,grid:true};this.historyData={};this.updated=0;this.pending=false;this.error="";this.tick=0;this.expanded={days:false,hours:false,guide:false};this.actualDay=[];this.actualFetched=0;this.actualLoading=false;this.actualError="";this.actualDate="";}
 setConfig(config){this.conf=config||{};this.render()}
 set hass(h){this.hassObj=h;if(!h)return;if(Date.now()-this.tick>9000){this.tick=Date.now();this.render();if(Date.now()-this.updated>30000)this.loadHistory()}}
 getCardSize(){return 16}
@@ -127,6 +127,72 @@ next[key].sort((a,b)=>a.t-b.t)}
 this.historyData=next;this.updated=Date.now()
 }catch(err){this.error="Recorder unavailable: "+(err?.message||String(err));this.updated=Date.now()}
 finally{this.pending=false;this.render()}}
+async loadActualDay(force=false){
+if(!this.hassObj||this.actualLoading)return;
+const midnight=new Date();midnight.setHours(0,0,0,0);
+const day=midnight.toDateString();
+if(!force&&day===this.actualDate&&Date.now()-this.actualFetched<300000)return;
+const sensor=this.state("solarToday");if(!sensor)return;
+this.actualLoading=true;
+try{
+const end=new Date(),url="history/period/"+encodeURIComponent(midnight.toISOString())+"?filter_entity_id="+encodeURIComponent(sensor.entity_id)+"&end_time="+encodeURIComponent(end.toISOString())+"&minimal_response";
+const response=await this.hassObj.callApi("GET",url);
+const list=Array.isArray(response)?response.flat():[];
+const points=list.filter(q=>!["unknown","unavailable",""].includes(String(q.state))).map(q=>({t:Date.parse(q.last_changed||q.last_updated||""),v:Number(q.state)})).filter(q=>Number.isFinite(q.t)&&Number.isFinite(q.v)&&q.v>=0);
+points.sort((a,b)=>a.t-b.t);
+this.actualDay=points;this.actualDate=day;this.actualFetched=Date.now();this.actualError="";
+}catch(error){this.actualError=error?.message||String(error);this.actualDate=day;this.actualFetched=Date.now()}
+finally{this.actualLoading=false;this.render()}}
+forecastChart(){
+const pane=el("section","panel"),heading=el("div","head");
+append(heading,el("h3","","Actual vs projected · Today"),
+el("span","muted","Cumulative solar energy · hover for kWh"));
+pane.append(heading);
+const hourly=this.state("forecast")?.attributes?.today_hourly||[];
+const midnight=new Date();midnight.setHours(0,0,0,0);const start=midnight.getTime();
+if(this.actualDate!==midnight.toDateString()||Date.now()-this.actualFetched>300000)this.loadActualDay();
+if(!Array.isArray(hourly)||!hourly.length){
+pane.append(el("p","muted","Waiting for today's hourly solar forecast."));return pane}
+let sum=0;
+const forecast=[{t:start,v:0}];
+for(const rec of [...hourly].sort((a,b)=>a.start-b.start)){
+const ts=(Number(rec.start)+3600)*1000;
+const v=Number(rec.kwh);
+if(Number.isFinite(ts)&&Number.isFinite(v)&&v>=0){sum+=v;forecast.push({t:ts,v:sum})}}
+const actual=this.actualDay||[];
+const max=Math.max(1,...forecast.map(q=>q.v),...actual.map(q=>q.v));
+const ns="http://www.w3.org/2000/svg",L=48,R=901,T=22,B=238;
+const svg=document.createElementNS(ns,"svg");svg.setAttribute("viewBox","0 0 920 280");svg.setAttribute("tabindex","0");svg.setAttribute("role","img");svg.setAttribute("aria-label","Forecast and actual solar kWh. Hover, tap or use arrow keys");
+const shape=(name,attrs,text)=>{const e=document.createElementNS(ns,name);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,String(v)));if(text!==undefined)e.textContent=String(text);svg.append(e);return e};
+const x=t=>L+(t-start)/86400000*(R-L),y=v=>B-v/max*(B-T);
+for(let i=0;i<=4;i++){const v=max*i/4,Y=y(v);
+shape("line",{x1:L,x2:R,y1:Y,y2:Y,stroke:"currentColor","stroke-opacity":.14});
+shape("text",{x:L-8,y:Y+4,fill:"currentColor","font-size":12,"text-anchor":"end"},v.toFixed(0))}
+for(let h=0;h<=24;h+=4){shape("text",{x:x(start+h*3600000),y:266,fill:"currentColor","font-size":12,"text-anchor":h===0?"start":h===24?"end":"middle"},String(h).padStart(2,"0")+":00")}
+shape("text",{x:13,y:13,fill:"currentColor","font-size":12},"kWh");
+for(const [data,color] of [[forecast,"#e6b650"],[actual,"#59a9eb"]]){
+let segment=[],previous=null;
+const flush=()=>{if(segment.length>1)shape("path",{d:segment.map((q,i)=>(i?"L":"M")+x(q.t).toFixed(1)+","+y(q.v).toFixed(1)).join(" "),fill:"none",stroke:color,"stroke-width":2.6});segment=[]};
+for(const q of data){if(q.t<start||q.t>start+86400000)continue;if(previous!==null&&q.t-previous>45*60000)flush();segment.push(q);previous=q.t}flush()}
+const cursor=shape("line",{x1:L,x2:L,y1:T,y2:B,stroke:"currentColor","stroke-dasharray":"4 4",visibility:"hidden"});
+shape("rect",{x:L,y:T,width:R-L,height:B-T,fill:"transparent","pointer-events":"all"});
+const tip=el("div","tooltip","Hover or tap for actual and predicted energy; blue is recorded, yellow is forecast.");
+let frac=.5;
+const inspect=v=>{frac=Math.max(0,Math.min(1,Math.round(v*288)/288));const t=start+frac*86400000,xx=x(t);
+cursor.setAttribute("x1",xx);cursor.setAttribute("x2",xx);cursor.setAttribute("visibility","visible");tip.replaceChildren();
+tip.append(el("strong","",new Date(t).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"})));
+const predicted=forecast.filter(q=>q.t<=t).at(-1);
+const nearest=actual.reduce((a,q)=>!a||Math.abs(q.t-t)<Math.abs(a.t-t)?q:a,null);
+const measured=nearest&&Math.abs(nearest.t-t)<=10*60000?nearest:null;
+const pred=el("span","", "Forecast: "+(predicted?units(predicted.v,"kWh"):"—"));
+const act=el("span","", "Actual: "+(measured?units(measured.v,"kWh"):"no nearby reading"));
+pred.style.color="#e6b650";act.style.color="#59a9eb";tip.append(pred,act)};
+const pointer=e=>{const b=svg.getBoundingClientRect();if(b.width)inspect(((e.clientX-b.left)/b.width*920-L)/(R-L))};
+svg.addEventListener("pointermove",pointer);svg.addEventListener("pointerdown",pointer);
+svg.addEventListener("keydown",e=>{if(!["ArrowLeft","ArrowRight"].includes(e.key))return;e.preventDefault();inspect(frac+(e.key==="ArrowRight"?1:-1)/288)});
+pane.append(svg,tip,el("p","muted note","Actual = inverter daily solar counter recorded by Home Assistant. Missing hours are not filled. Forecast = Open-Meteo projected hourly production, which may change as weather forecasts refresh."));
+if(this.actualError)pane.append(el("p","muted",this.actualError));
+return pane}
 forecast(){
 const p=this.panel("Solar forecast","Weather-based prediction · read-only"),stats=el("div","stats");
 for(const [name,key] of [["Today","forecast"],["Remaining today","remaining"],["Tomorrow","tomorrow"],["Next 7 days","week"]]){
@@ -170,7 +236,7 @@ const style=el("style");style.textContent=css;const app=el("div","app"),head=el(
 const solar=this.state("pv"),connected=solar&&!["unknown","unavailable"].includes(String(solar.state));
 append(head,el("h2","","SAJ Energy"),el("span",connected?"good":"bad",connected?"● Connected to inverter":"● Monitoring unavailable"));
 const refresh=el("button","","↻ Refresh");refresh.addEventListener("click",()=>{this.updated=0;this.loadHistory(true)});head.append(refresh);
-append(app,head,this.live(),this.history(),this.forecast(),this.guide());this.shadowRoot.replaceChildren(style,app)}
+append(app,head,this.live(),this.history(),this.forecast(),this.forecastChart(),this.guide());this.shadowRoot.replaceChildren(style,app)}
 }
 if(!customElements.get("saj-safe-monitor-card"))customElements.define("saj-safe-monitor-card",Monitor);
 window.customCards=window.customCards||[];window.customCards.push({type:"saj-safe-monitor-card",name:"SAJ Energy Monitor",description:"Read-only live energy, historic data, forecast and sensor guide"});
