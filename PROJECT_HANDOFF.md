@@ -23,6 +23,7 @@ The entire dashboard is registered automatically using `frontend_setup.py`; new 
 - All old `saj_h2_safe` **entity unique IDs** and sensor definitions remain stable. This is required because `saj-h2-control-enhanced` uses the same read-only coordinator keys and existing dashboards/automations may use those entities. Do not rename the integration domain, restore old dashboard YAML, or require the control repository.
 - Installer from the *control repository* already protects independently existing monitors from being overwritten. If editing that other project, retain its "preserve existing monitor" behaviour.
 
+- `SajSafeOptionsFlow` in `config_flow.py` exposes solar panel group counts, wattages, compass directions and tilts, system efficiency, nominal battery capacity, and live poll frequency through **Home Assistant's built-in Configure UI**. Defaults reflect the original user's panel system, but prompt everyone to review them. No YAML. It rejects layouts with zero total panels. `solar_forecast.py` consumes these options on each refresh; changing options reloads the integration. Learned forecast factors are reset if the panel layout/efficiency fingerprint differs from stored learning metadata, preventing incompatible historical adjustments.
 ## Backend data and safety
 
 - `__init__.py`: existing `SajSafeCoordinator` continues to read the established holding registers with Modbus read-only function 03, 10-second live readings, slower mode/energy counter cache; retains low-level keys and battery SOC checks.
