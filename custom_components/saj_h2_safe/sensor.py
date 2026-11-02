@@ -108,9 +108,56 @@ class SajForecastSensor(CoordinatorEntity, SensorEntity):
             "limitation": data.get("note", ""),
         }
 
+class SajReadOnlyEnergySensor(CoordinatorEntity, SensorEntity):
+    """Distinct metered-interval *estimates*, never certified grid counters.
+
+    Kept out of SENSORS and ENERGY_KEYS so previous entity unique IDs,
+    original register profiles, and TOU Control aliases remain unchanged.
+    """
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+    LABELS = {
+        "grid_energy_imported_estimated": ("Grid energy imported · estimated", "kWh"),
+        "grid_energy_exported_estimated": ("Grid energy exported · estimated", "kWh"),
+        "grid_imported_today_estimated": ("Grid imported today · monitored", "kWh"),
+        "grid_exported_today_estimated": ("Grid exported today · monitored", "kWh"),
+        "grid_power_signed_import_export": ("Grid power signed (import + / export −)", "W"),
+    }
+    def __init__(self, coordinator, key):
+        super().__init__(coordinator)
+        self.key=key
+        self._attr_name,unit=self.LABELS[key]
+        self._attr_unique_id=f"{coordinator.entry.entry_id}_{key}"
+        self._attr_native_unit_of_measurement=unit
+        if unit=="W":
+            self._attr_device_class=SensorDeviceClass.POWER
+            self._attr_state_class=SensorStateClass.MEASUREMENT
+        else:
+            self._attr_device_class=SensorDeviceClass.ENERGY
+            self._attr_state_class=(
+                SensorStateClass.TOTAL_INCREASING
+                if key in ("grid_energy_imported_estimated",
+                           "grid_energy_exported_estimated")
+                else SensorStateClass.TOTAL
+            )
+        self._attr_device_info={
+            "identifiers":{(DOMAIN,coordinator.entry.entry_id)},
+            "name":"SAJ H2 Safe Monitor","manufacturer":"SAJ",
+            "model":"H2 (read-only, register profile under verification)",
+        }
+
+    @property
+    def native_value(self):
+        if self.coordinator.data is None:
+            return None
+        return self.coordinator.data.get(self.key)
+
+
 async def async_setup_entry(hass, entry, async_add_entities):
     keys = [*SENSORS, "operating_mode", *ENERGY_KEYS]
     entities = [SajSafeSensor(entry.runtime_data, key) for key in keys]
+    entities += [SajReadOnlyEnergySensor(entry.runtime_data,key)
+                 for key in SajReadOnlyEnergySensor.LABELS]
     forecast = getattr(entry.runtime_data, "forecast", None)
     if forecast is not None:
         entities += [
