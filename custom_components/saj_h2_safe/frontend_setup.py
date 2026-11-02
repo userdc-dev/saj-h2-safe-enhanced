@@ -10,7 +10,7 @@ from pathlib import Path
 from homeassistant.components.http import StaticPathConfig
 
 _LOGGER = logging.getLogger(__name__)
-URL = "/saj-h2-safe/v040/saj-safe-monitor-card.js"
+URL = "/saj-h2-safe/v041/saj-safe-monitor-card.js"
 PATH = "saj-safe-monitor"
 CARD = "custom:saj-safe-monitor-card"
 
