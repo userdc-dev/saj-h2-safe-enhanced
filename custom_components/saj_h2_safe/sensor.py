@@ -120,8 +120,8 @@ class SajReadOnlyEnergySensor(CoordinatorEntity, SensorEntity):
     LABELS = {
         "grid_energy_imported_estimated": ("Grid energy imported · estimated", "kWh"),
         "grid_energy_exported_estimated": ("Grid energy exported · estimated", "kWh"),
-        "grid_imported_today_estimated": ("Grid imported today · monitored", "kWh"),
-        "grid_exported_today_estimated": ("Grid exported today · monitored", "kWh"),
+        "grid_imported_today_estimated": ("Grid imported today estimated", "kWh"),
+        "grid_exported_today_estimated": ("Grid exported today estimated", "kWh"),
         "grid_power_signed_import_export": ("Grid power signed (import + / export −)", "W"),
     }
     def __init__(self, coordinator, key):
