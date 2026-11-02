@@ -1,7 +1,7 @@
 {
   "domain": "saj_h2_safe",
   "name": "SAJ H2 Safe Monitor",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "documentation": "https://github.com/userdc-dev/saj-h2-safe-enhanced",
   "issue_tracker": "https://github.com/userdc-dev/saj-h2-safe-enhanced/issues",
   "requirements": [
