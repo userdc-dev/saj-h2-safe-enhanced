@@ -10,71 +10,52 @@ from pathlib import Path
 from homeassistant.components.http import StaticPathConfig
 
 _LOGGER = logging.getLogger(__name__)
-URL = "/saj-h2-safe/v042/saj-safe-monitor-card.js"
-RESOURCE_PREFIX = "/saj-h2-safe/"
+URL = "/saj-h2-safe/v040/saj-safe-monitor-card.js"
 PATH = "saj-safe-monitor"
 CARD = "custom:saj-safe-monitor-card"
 
 
 async def async_register_frontend(hass):
-    """Serve the bundle and install it as a persistent Lovelace module.
-
-    In storage resource mode, Lovelace resources load *after* frontend custom
-    element polyfills. add_extra_js_url can run too early and lose the card's
-    customElements registration, especially on mobile. YAML resource mode
-    cannot be written to; use extra JS only for that fallback.
-    """
     try:
         js = Path(__file__).parent / "frontend" / "saj-safe-monitor-card.js"
         await hass.http.async_register_static_paths(
             [StaticPathConfig(URL, str(js), False)])
+        from homeassistant.components.frontend import add_extra_js_url
+        add_extra_js_url(hass, URL)
+        await async_cleanup_newer_card_resource(hass)
     except Exception:
-        _LOGGER.exception("Could not serve SAJ monitoring card; sensors remain available")
-        return
-    await async_ensure_card_resource(hass)
+        _LOGGER.exception("Could not register safe monitoring card; sensors remain available")
 
 
-async def async_ensure_card_resource(hass):
-    """Register or update ONLY our card resource; do not touch other cards."""
+async def async_cleanup_newer_card_resource(hass):
+    """One-time rollback cleanup for the broken v0.4.2 Lovelace module.
+
+    v0.4.0 uses the original frontend script registration and must not also
+    load the later v0.4.1/v0.4.2 Lovelace module. Only touch the exact
+    versioned resource urls added by those releases. Never delete any
+    user-created dashboard, resource, or custom integration.
+    """
     try:
         from homeassistant.components.lovelace import LOVELACE_DATA
         from homeassistant.components.lovelace.const import MODE_STORAGE
         lovelace = hass.data.get(LOVELACE_DATA)
-        if lovelace is None:
-            _LOGGER.debug("Lovelace not ready; registering SAJ card after startup")
-            return False
-
-        if lovelace.resource_mode != MODE_STORAGE:
-            # No YAML editing required; fallback global registration is the
-            # only supported programmatic route for YAML resource mode.
-            from homeassistant.components.frontend import add_extra_js_url
-            add_extra_js_url(hass, URL)
-            _LOGGER.info("SAJ monitoring card registered via YAML-mode fallback")
-            return True
-
-        collection = lovelace.resources
-        # Important: resources are LAZY loaded on many HA releases. Calling
-        # async_items() before load can replace the user's existing resources.
-        await collection.async_get_info()
-        matching = [
-            item for item in collection.async_items()
-            if str(item.get("url", "")).startswith(RESOURCE_PREFIX)
-            and "saj-safe-monitor-card.js" in str(item.get("url", ""))
-        ]
-        current = next((item for item in matching
-                        if item.get("url") == URL and item.get("type") == "module"), None)
-        if current is None and matching:
-            # Migrate precisely our resource. Do not overwrite unrelated cards.
-            original = matching[0]
-            await collection.async_update_item(
-                original["id"], {"url": URL, "type": "module"})
-        elif current is None:
-            await collection.async_create_item({"url": URL, "type": "module"})
-        _LOGGER.info("SAJ monitoring Lovelace resource ready: %s", URL)
-        return True
+        if lovelace is None or lovelace.resource_mode != MODE_STORAGE:
+            return
+        resources = lovelace.resources
+        await resources.async_get_info()
+        old_urls = {
+            "/saj-h2-safe/v041/saj-safe-monitor-card.js",
+            "/saj-h2-safe/v042/saj-safe-monitor-card.js",
+        }
+        for resource in list(resources.async_items()):
+            if resource.get("url") in old_urls:
+                await resources.async_delete_item(resource["id"])
+                _LOGGER.info(
+                    "Cleaned up incompatible SAJ monitoring resource %s",
+                    resource["url"],
+                )
     except Exception:
-        _LOGGER.exception("Could not register SAJ Lovelace resource; retry after startup")
-        return False
+        _LOGGER.exception("SAJ rollback resource cleanup could not complete")
 
 
 async def async_ensure_dashboard(hass):
